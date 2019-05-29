@@ -43,55 +43,55 @@ namespace OscarBot.Classes
 
     public static class ICollectionExcensions
     {
-        public static async Task<int> QueueUp(this ICollection<Song> queue, ulong guildId, Song s)
+        public static async Task<int> QueueUp(this ICollection<Song> queue, ulong guildId, Song s, EntityContext _db)
         {
             queue.Add(s);
-            var queues = DbService._db.Queues;
+            var queues = _db.Queues;
             var query = queues.Where(x => x.GuildId == guildId);
             if (query.Count() == 0)
                 queues.Add(new GuildQueue { Queue = queue, GuildId = guildId, Skipped = new List<Skip>() });
             else
                 query.Single().Queue = queue;
-            return await DbService._db.SaveChangesAsync();
+            return await _db.SaveChangesAsync();
         }
-        public static async Task<Song> Pop(this ICollection<Song> queue, ulong guildId)
+        public static async Task<Song> Pop(this ICollection<Song> queue, ulong guildId, EntityContext _db)
         {
             Song s = queue.First();
             queue.Remove(s);
-            var queues = DbService._db.Queues;
+            var queues = _db.Queues;
             var query = queues.Where(x => x.GuildId == guildId);
             if (query.Count() == 0)
                 queues.Add(new GuildQueue { Queue = queue, GuildId = guildId, Skipped = new List<Skip>() });
             else
                 query.Single().Queue = queue;
-            await DbService._db.SaveChangesAsync();
+            await _db.SaveChangesAsync();
             return s;
         }
     }
 
     public static class ListExtensions
     {
-        public static async Task<int> AddUser(this List<Skip> list, Skip s, ulong guildId)
+        public static async Task<int> AddUser(this List<Skip> list, Skip s, ulong guildId, EntityContext _db)
         {
             list.Add(s);
-            var queues = DbService._db.Queues;
+            var queues = _db.Queues;
             var query = queues.Where(x => x.GuildId == guildId);
             if (query.Count() == 0)
                 queues.Add(new GuildQueue { Queue = new List<Song>(), GuildId = guildId, Skipped = list});
             else
                 query.Single().Skipped = list;
-            return await DbService._db.SaveChangesAsync();
+            return await _db.SaveChangesAsync();
         }
-        public static async Task<int> RemoveUsers(this List<Skip> list, ulong guildId)
+        public static async Task<int> RemoveUsers(this List<Skip> list, ulong guildId, EntityContext _db)
         {
             list.RemoveAll(x => x.UserId >= 0);
-            var queues = DbService._db.Queues;
+            var queues = _db.Queues;
             var query = queues.Where(x => x.GuildId == guildId);
             if (query.Count() == 0)
                 queues.Add(new GuildQueue { Queue = new List<Song>(), GuildId = guildId, Skipped = list });
             else
                 query.Single().Skipped = list;
-            return await DbService._db.SaveChangesAsync();
+            return await _db.SaveChangesAsync();
         }
     }
 }

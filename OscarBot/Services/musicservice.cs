@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using OscarBot.Classes;
 using Discord.WebSocket;
 using Discord;
+using Microsoft.EntityFrameworkCore;
 
 namespace OscarBot.Services
 {
@@ -25,7 +26,7 @@ namespace OscarBot.Services
         public async Task<ICollection<Song>> GetGuildQueue(ulong id)
         {
             var queues = _db.Queues;
-            var query = queues.Where(x => x.GuildId == id);
+            var query = queues.Include(x => x.Queue).Where(x => x.GuildId == id);
             ICollection<Song> queue;
             if (query.Count() == 0)
             {
@@ -41,7 +42,7 @@ namespace OscarBot.Services
         public async Task<List<Skip>> GetSkips(ulong id)
         {
             var queues = _db.Queues;
-            var query = queues.Where(x => x.GuildId == id);
+            var query = queues.Include(x => x.Skipped).Where(x => x.GuildId == id);
             List<Skip> skips;
             if (query.Count() == 0)
             {

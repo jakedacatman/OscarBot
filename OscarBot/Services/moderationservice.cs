@@ -8,19 +8,20 @@ using Discord;
 using Discord.WebSocket;
 using System.Threading;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace OscarBot.Services
 {
     public class ModerationService
     {
-        private readonly EntityContext _db;
+        private readonly IServiceProvider _services;
         private readonly DiscordShardedClient _client;
         private bool UnpunishIsRunning = false;
         public List<ModerationActionCollection> _actions = new List<ModerationActionCollection>();
 
-        public ModerationService(EntityContext db, DiscordShardedClient client)
+        public ModerationService(IServiceProvider services, DiscordShardedClient client)
         {
-            _db = db;
+            _services = services;
             _client = client;
             _client.ShardReady += ShardReady;
         }
@@ -30,7 +31,10 @@ namespace OscarBot.Services
         {
             counter++;
             if (counter == _client.Shards.Count)
-                return Task.Run(async () => await StartAsync());
+            {
+                _client.ShardReady -= ShardReady;
+                return Task.Run(StartAsync);
+            }
             else return Task.CompletedTask;
         }
 
@@ -95,74 +99,93 @@ namespace OscarBot.Services
 
         public async Task<ModerationActionCollection> GetModerationActionsAsync(ulong guildId)
         {
-
-            var c = _db.ModerationActions;
-            var query = c.Include(x => x.Actions).Where(x => x.GuildId == guildId);
-            ModerationActionCollection actions;
-            if (query.Count() == 0)
+            using (var scope = _services.CreateScope())
             {
-                actions = new ModerationActionCollection { GuildId = guildId, Actions = new List<ModerationAction>() };
-                c.Add(actions);
+                var _db = scope.ServiceProvider.GetRequiredService<EntityContext>();
+
+                var c = _db.ModerationActions;
+                var query = c.Include(x => x.Actions).Where(x => x.GuildId == guildId);
+                ModerationActionCollection actions;
+                if (query.Count() == 0)
+                {
+                    actions = new ModerationActionCollection { GuildId = guildId, Actions = new List<ModerationAction>() };
+                    c.Add(actions);
+                }
+                else
+                    actions = query.Single();
+                await _db.SaveChangesAsync();
+                return actions;
             }
-            else
-                actions = query.Single();
-            await _db.SaveChangesAsync();
-            return actions;
         }
 
         public async Task<int> AddModerationActionAsync(ModerationAction action)
         {
-            var actions = _db.ModerationActions;
-            var query = actions.Include(x => x.Actions).Where(x => x.GuildId == action.GuildId);
-            List<ModerationAction> list;
-            if (query.Count() == 0)
+            using (var scope = _services.CreateScope())
             {
-                list = new List<ModerationAction>();
-                actions.Add(new ModerationActionCollection { GuildId = action.GuildId, Actions = list });
-            }
-            else
-                list = query.Single().Actions;
+                var _db = scope.ServiceProvider.GetRequiredService<EntityContext>();
 
-            list.Add(action);
-            return await _db.SaveChangesAsync();
+                var actions = _db.ModerationActions;
+                var query = actions.Include(x => x.Actions).Where(x => x.GuildId == action.GuildId);
+                List<ModerationAction> list;
+                if (query.Count() == 0)
+                {
+                    list = new List<ModerationAction>();
+                    actions.Add(new ModerationActionCollection { GuildId = action.GuildId, Actions = list });
+                }
+                else
+                    list = query.Single().Actions;
+
+                list.Add(action);
+                return await _db.SaveChangesAsync();
+            }
         }
         public async Task<int> RemoveModerationActionAsync(ModerationAction action)
         {
-            var actions = _db.ModerationActions;
-            var query = actions.Where(x => x.GuildId == action.GuildId);
-            List<ModerationAction> list;
-            if (query.Count() == 0)
+            using (var scope = _services.CreateScope())
             {
-                list = new List<ModerationAction>();
-                actions.Add(new ModerationActionCollection { GuildId = action.GuildId, Actions = list });
-            }
-            else
-            {
-                list = query.Single().Actions;
-            }
+                var _db = scope.ServiceProvider.GetRequiredService<EntityContext>();
 
-            if (list.Contains(action))
-                list.Remove(action);
-            return await _db.SaveChangesAsync();
+                var actions = _db.ModerationActions;
+                var query = actions.Where(x => x.GuildId == action.GuildId);
+                List<ModerationAction> list;
+                if (query.Count() == 0)
+                {
+                    list = new List<ModerationAction>();
+                    actions.Add(new ModerationActionCollection { GuildId = action.GuildId, Actions = list });
+                }
+                else
+                {
+                    list = query.Single().Actions;
+                }
+
+                if (list.Contains(action))
+                    list.Remove(action);
+                return await _db.SaveChangesAsync();
+            }
         }
         public async Task<int> RemoveModerationActionAsync(SocketGuildUser user, ModerationAction.ActionType type)
         {
-            var actions = _db.ModerationActions;
-            var query = actions.Where(x => x.GuildId == user.Guild.Id);
-            List<ModerationAction> list;
-            if (query.Count() == 0)
+            using (var scope = _services.CreateScope())
             {
-                list = new List<ModerationAction>();
-                actions.Add(new ModerationActionCollection { GuildId = user.Guild.Id, Actions = list });
-            }
-            else
-            {
-                list = query.Single().Actions;
-            }
+                var _db = scope.ServiceProvider.GetRequiredService<EntityContext>();
 
-            list.RemoveAll(x => x.UserId == user.Id && x.Type == type);
+                var actions = _db.ModerationActions;
+                var query = actions.Where(x => x.GuildId == user.Guild.Id);
+                List<ModerationAction> list;
+                if (query.Count() == 0)
+                {
+                    list = new List<ModerationAction>();
+                    actions.Add(new ModerationActionCollection { GuildId = user.Guild.Id, Actions = list });
+                }
+                else
+                {
+                    list = query.Single().Actions;
+                }
 
-            return await _db.SaveChangesAsync();
+                list.RemoveAll(x => x.UserId == user.Id && x.Type == type);
+
+                return await _db.SaveChangesAsync();
+            }
         }
 
         public async Task<bool> TryMuteUserAsync(SocketGuild guild, SocketGuildUser moderator, SocketGuildUser user, TimeSpan timeToRevert, string reason = null)

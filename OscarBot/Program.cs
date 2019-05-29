@@ -24,9 +24,6 @@ namespace OscarBot
         private CommandService _commands;
         private IServiceProvider _services;
         private LavalinkManager _manager;
-        
-        private readonly DbService _db = new DbService();
-        private readonly EntityContext _ec = new EntityContext();
 
         public static void Main(string[] args) => new Program().Start().GetAwaiter().GetResult();
 
@@ -65,7 +62,7 @@ namespace OscarBot
                 .AddSingleton(_client)
                 .AddSingleton(_commands)
                 .AddSingleton(_manager)
-                .AddSingleton(_db)
+                .AddSingleton<DbService>()
                 .AddSingleton<ModerationService>()
                 .AddSingleton<MiscService>()
                 .AddSingleton<InteractiveService>()
@@ -78,7 +75,7 @@ namespace OscarBot
 
             _commands.AddTypeReader<TimeSpan>(new TimeSpanReader());
 
-            await _client.LoginAsync(TokenType.Bot, _db.GetApiKey("discord"));//"NTA4MDAzNzkzOTIxNzY5NDcz.XLom2A.owjlRR4DPHwGDMgW0mBqz0NypGY");
+            await _client.LoginAsync(TokenType.Bot, _services.GetService<DbService>().GetApiKey("discord"));
             await _client.StartAsync();
 
             await _client.SetActivityAsync(new Game($"myself start up {_client.Shards.Count} shards", ActivityType.Watching));
@@ -128,7 +125,7 @@ namespace OscarBot
                 if (!(_msg is SocketUserMessage msg) || _msg == null || string.IsNullOrEmpty(msg.Content)) return;
                 ShardedCommandContext context = new ShardedCommandContext(_client, msg);
 
-                string prefix = await _db.GetPrefixAsync(context.Guild.Id);
+                string prefix = await _services.GetService<DbService>().GetPrefixAsync(context.Guild.Id);
 
                 int argPos = prefix.Length - 1;
                 if (!msg.HasStringPrefix(prefix, ref argPos)) return;
@@ -156,7 +153,7 @@ namespace OscarBot
                 if (old.EditedTimestamp.HasValue || !msg.EditedTimestamp.HasValue) return;
                 if (old.Timestamp.UtcDateTime.AddMinutes(1d) < msg.EditedTimestamp.Value.UtcDateTime) return;
 
-                string prefix = await _db.GetPrefixAsync(context.Guild.Id);
+                string prefix = await _services.GetService<DbService>().GetPrefixAsync(context.Guild.Id);
 
                 int argPos = prefix.Length - 1;
                 if (!msg.HasStringPrefix(prefix, ref argPos)) return;
