@@ -1,0 +1,174 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Discord;
+using Discord.Commands;
+using Discord.WebSocket;
+using Microsoft.Extensions.DependencyInjection;
+using Discord.Addons.Interactive;
+using System.Reflection;
+using System.IO;
+using SharpLink;
+using SharpLink.Stats;
+using OscarBot.Classes;
+using OscarBot.Services;
+using OscarBot.TypeReaders;
+
+namespace OscarBot
+{
+    class Program
+    {
+        private DiscordShardedClient _client;
+        private CommandService _commands;
+        private IServiceProvider _services;
+        private LavalinkManager _manager;
+        
+        private readonly DbService _db = new DbService();
+        private readonly EntityContext _ec = new EntityContext();
+
+        public static void Main(string[] args) => new Program().Start().GetAwaiter().GetResult();
+
+        public async Task Start()
+        {
+            _client = new DiscordShardedClient(new DiscordSocketConfig
+            {
+                LogLevel = LogSeverity.Verbose,
+                AlwaysDownloadUsers = false,
+                ConnectionTimeout = int.MaxValue,
+                TotalShards = 4,
+                MessageCacheSize = 1024
+            });
+
+            _commands = new CommandService(new CommandServiceConfig
+            {
+                ThrowOnError = true,
+                CaseSensitiveCommands = false,
+                LogLevel = LogSeverity.Verbose,
+                DefaultRunMode = RunMode.Async,
+                IgnoreExtraArgs = false
+            });
+
+            _manager = new LavalinkManager(_client, new LavalinkManagerConfig
+            {
+                RESTHost = "localhost",
+                RESTPort = 2333,
+                WebSocketHost = "localhost",
+                WebSocketPort = 2333,
+                Authorization = "youshallnotpass",
+                TotalShards = 4,
+                LogSeverity = LogSeverity.Info
+            });
+
+            _services = new ServiceCollection()
+                .AddSingleton(_client)
+                .AddSingleton(_commands)
+                .AddSingleton(_manager)
+                .AddSingleton(_db)
+                .AddSingleton<ModerationService>()
+                .AddSingleton<MiscService>()
+                .AddSingleton<InteractiveService>()
+                .AddSingleton<ImageService>()
+                .AddSingleton<MusicService>()
+                .AddDbContext<EntityContext>()
+                .BuildServiceProvider();
+
+            await _commands.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
+
+            _commands.AddTypeReader<TimeSpan>(new TimeSpanReader());
+
+            await _client.LoginAsync(TokenType.Bot, _db.GetApiKey("discord"));//"NTA4MDAzNzkzOTIxNzY5NDcz.XLom2A.owjlRR4DPHwGDMgW0mBqz0NypGY");
+            await _client.StartAsync();
+
+            await _client.SetActivityAsync(new Game($"myself start up {_client.Shards.Count} shards", ActivityType.Watching));
+
+            _client.Log += Log;
+            _client.MessageReceived += MsgReceived;
+            _client.MessageUpdated += MsgUpdated;
+
+            int counter = 1;
+            _client.ShardConnected += async (DiscordSocketClient client) =>
+            {
+                if (counter >= _client.Shards.Count)
+                {
+                    await _manager.StartAsync();
+                    await _client.SetActivityAsync(new Game($"over {counter} out of {_client.Shards.Count} shards", ActivityType.Watching));
+                }   
+                counter++;
+            };
+
+
+            _manager.Log += Log;
+
+            _commands.Log += Log;
+
+            await Task.Delay(-1);
+        }
+
+        private Task Log(LogMessage msg)
+        {
+            try
+            {
+                Console.WriteLine($"{DateTime.Now,19} [{msg.Severity,8}] {msg.Source}: {msg.Message ?? msg.Exception.Message}");
+
+                return Task.CompletedTask;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+                return Task.CompletedTask;
+            }
+        }
+
+        private async Task MsgReceived(SocketMessage _msg)
+        {
+            try
+            {
+                if (!(_msg is SocketUserMessage msg) || _msg == null || string.IsNullOrEmpty(msg.Content)) return;
+                ShardedCommandContext context = new ShardedCommandContext(_client, msg);
+
+                string prefix = await _db.GetPrefixAsync(context.Guild.Id);
+
+                int argPos = prefix.Length - 1;
+                if (!msg.HasStringPrefix(prefix, ref argPos)) return;
+
+                if (context.User.IsBot) return;
+                await _commands.ExecuteAsync(context, argPos, _services);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+        }
+        private async Task MsgUpdated(Cacheable<IMessage, ulong> oldMsg, SocketMessage _msg, ISocketMessageChannel channel)
+        {
+            try
+            {
+                if (!(_msg is SocketUserMessage msg) || string.IsNullOrEmpty(msg.Content)) return;
+
+                ShardedCommandContext context = new ShardedCommandContext(_client, msg);
+
+                var old = await oldMsg.GetOrDownloadAsync();
+
+                if (old == null) return;
+
+                if (old.EditedTimestamp.HasValue || !msg.EditedTimestamp.HasValue) return;
+                if (old.Timestamp.UtcDateTime.AddMinutes(1d) < msg.EditedTimestamp.Value.UtcDateTime) return;
+
+                string prefix = await _db.GetPrefixAsync(context.Guild.Id);
+
+                int argPos = prefix.Length - 1;
+                if (!msg.HasStringPrefix(prefix, ref argPos)) return;
+
+                if (context.User.IsBot) return;
+                await _commands.ExecuteAsync(context, argPos, _services);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+        }
+    }
+
+}

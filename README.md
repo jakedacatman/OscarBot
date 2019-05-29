@@ -1,0 +1,1 @@
+# OscarBot - a Discord bot
