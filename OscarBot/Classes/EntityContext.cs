@@ -6,7 +6,6 @@ namespace OscarBot.Classes
 {
     public class EntityContext : DbContext
     {
-        public DbSet<GuildQueue> Queues { get; set; }
         public DbSet<ModerationActionCollection> ModerationActions { get; set; }
         public DbSet<ApiKey> ApiKeys { get; set; }
         public DbSet<Prefix> Prefixes { get; set; }

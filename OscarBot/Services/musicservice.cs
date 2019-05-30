@@ -1,12 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
-using System.Text;
+using Discord.Commands;
 using System.Threading.Tasks;
 using OscarBot.Classes;
 using Discord.WebSocket;
 using Discord;
 using Microsoft.EntityFrameworkCore;
+using SharpLink;
+using Microsoft.Extensions.DependencyInjection;
+
 
 namespace OscarBot.Services
 {
@@ -14,45 +18,198 @@ namespace OscarBot.Services
     {
         private readonly DiscordShardedClient _client;
         private readonly MiscService _misc;
-        private readonly EntityContext _db;
+        private readonly IServiceProvider _services;
+        private readonly ConcurrentDictionary<ulong, GuildQueue> _queues = new ConcurrentDictionary<ulong, GuildQueue>();
 
-        public MusicService(DiscordShardedClient client, MiscService misc, EntityContext db)
+        public MusicService(DiscordShardedClient client, MiscService misc, IServiceProvider services)
         {
             _client = client;
             _misc = misc;
-            _db = db;
+            _services = services;
         }
 
-        public async Task<ICollection<Song>> GetGuildQueue(ulong id)
+        public Queue<Song> GetQueue(ShardedCommandContext context)
         {
-            var queues = _db.Queues;
-            var query = queues.Include(x => x.Queue).Where(x => x.GuildId == id);
-            ICollection<Song> queue;
-            if (query.Count() == 0)
-            {
-                queue = new List<Song>();
-                queues.Add(new GuildQueue { Queue = queue, GuildId = id, Skipped = new List<Skip>() });
-            }
-            else
-                queue = query.Single().Queue;
-            await _db.SaveChangesAsync();
+            var queue = _queues.GetOrAdd(context.Guild.Id, x => new GuildQueue(context.Guild.Id, context.Channel.Id));
+            return queue.Queue;
+        }
+        public Queue<Song> GetQueue(ulong guildId)
+        {
+            _queues.TryGetValue(guildId, out GuildQueue queue);
+            return queue.Queue;
+        }
+        public ulong GetChannelId(ulong guildId)
+        {
+            _queues.TryGetValue(guildId, out GuildQueue queue);
+            return queue.ChannelId;
+        }
+
+        public List<Skip> GetSkips(ShardedCommandContext context)
+        {
+            var queue = _queues.GetOrAdd(context.Guild.Id, x => new GuildQueue(context.Guild.Id, context.Channel.Id));
+            return queue.Skipped;
+        }
+
+        private GuildQueue GetGuildQueue(ShardedCommandContext context)
+        {
+            var queue = _queues.GetOrAdd(context.Guild.Id, x => new GuildQueue(context.Guild.Id, context.Channel.Id));
+            return queue;
+        }
+        private GuildQueue GetGuildQueue(ulong guildId)
+        {
+            _queues.TryGetValue(guildId, out GuildQueue queue);
             return queue;
         }
 
-        public async Task<List<Skip>> GetSkips(ulong id)
+        public bool AddSong(ShardedCommandContext context, Song s)
         {
-            var queues = _db.Queues;
-            var query = queues.Include(x => x.Skipped).Where(x => x.GuildId == id);
-            List<Skip> skips;
-            if (query.Count() == 0)
+            var fields = new List<EmbedFieldBuilder>()
             {
-                skips = new List<Skip>();
-                queues.Add(new GuildQueue { Queue = new List<Song>(), GuildId = id, Skipped = skips });
+                new EmbedFieldBuilder().WithName("**Title:**").WithValue(s.Name).WithIsInline(false),
+                new EmbedFieldBuilder().WithName("**Length:**").WithValue(s.Length).WithIsInline(true),
+                new EmbedFieldBuilder().WithName("**Author:**").WithValue(s.Author).WithIsInline(true),
+                new EmbedFieldBuilder().WithName("**URL:**").WithValue($"<{s.URL}>").WithIsInline(false)
+            };
+
+            var songEmbed = new EmbedBuilder()
+                .WithColor(_misc.RandomColor())
+                .WithTitle("Song added!")
+                .WithThumbnailUrl(s.Thumbnail)
+                .WithFields(fields)
+                .WithCurrentTimestamp();
+
+            var gq = GetGuildQueue(context);
+            gq.Queue.Enqueue(s);
+
+            return _queues.Update(context.Guild.Id, gq);
+        }
+
+        private bool AddSkip(ShardedCommandContext context, Skip s)
+        {
+            var gq = GetGuildQueue(context);
+            gq.Skipped.Add(s);
+
+            return _queues.Update(context.Guild.Id, gq);
+        }
+
+        private bool RemoveAllSkips(ShardedCommandContext context)
+        {
+            var gq = GetGuildQueue(context);
+            gq.Skipped.RemoveAll(x => x.UserId >= 0);
+
+            return _queues.Update(context.Guild.Id, gq);
+        }
+
+        public Song Dequeue(ShardedCommandContext context)
+        {
+            var gq = GetGuildQueue(context);
+            var song = gq.Queue.Dequeue();
+
+            _queues.Update(context.Guild.Id, gq);
+
+            return song;
+        }
+        public Song Dequeue(ulong guildId)
+        {
+            var gq = GetGuildQueue(guildId);
+            var song = gq.Queue.Dequeue();
+
+            _queues.Update(guildId, gq);
+
+            return song;
+        }
+
+        public async Task<bool> PlayAsync(LavalinkManager _manager, ShardedCommandContext context, Song s)
+        {
+            var player = _manager.GetPlayer(context.Guild.Id);
+            if (player != null && player.Playing) return false;
+
+            var voiceChannel = (context.User as SocketGuildUser).VoiceChannel;
+
+            if (voiceChannel == null) return false;
+            else
+            {
+                await voiceChannel.ConnectAsync(false, false, true);
+                await voiceChannel.DisconnectAsync();
+                player = null; // cheap hack to make a new player
+            }
+
+            if (player == null && context.Guild.CurrentUser.VoiceChannel != null)
+                await context.Guild.CurrentUser.VoiceChannel.DisconnectAsync();
+
+            player = await _manager.JoinAsync(voiceChannel);
+
+            var tracks = await _manager.GetTracksAsync(s.URL);
+            var track = tracks.Tracks.Where(x => x.Url != null).FirstOrDefault();
+
+            await context.Channel.SendMessageAsync(embed: GenerateNowPlaying(s).Build());
+
+            await player.SetVolumeAsync(100);
+            await player.PlayAsync(track);
+
+            var timeout = Task.Delay(track.Length);
+
+            var p = new TaskCompletionSource<bool>();
+            Task TrackFinish(LavalinkPlayer _, LavalinkTrack __, string ___)
+            {
+                p.SetResult(true);
+                return Task.CompletedTask;
+            }
+            _manager.TrackEnd += TrackFinish;
+            var t = await Task.WhenAny(p.Task, timeout);
+            _manager.TrackEnd -= TrackFinish;
+
+            if (t == timeout)
+            {
+                Console.WriteLine($"Failed to finish playing track {track.Url}");
+                return false;
             }
             else
-                skips = (List<Skip>)query.Single().Skipped;
-            await _db.SaveChangesAsync();
-            return skips;
+            {
+                Console.WriteLine($"Finished playing track {track.Url}");
+                return true;
+            }
+        }
+
+        public async Task SkipAsync(LavalinkManager _manager, ShardedCommandContext context)
+        {
+            var player = _manager.GetPlayer(context.Guild.Id);
+            if (player == null || !player.Playing) return;
+
+            if (!player.CurrentTrack.IsSeekable)
+            {
+                await context.Channel.SendMessageAsync("This song cannot be skipped.");
+                return;
+            }
+
+            var currUser = (SocketGuildUser)context.User;
+            var users = GetSkips(context);
+            if (users.Where(x => x.UserId == currUser.Id).Count() > 0) return;
+
+            var queue = GetGuildQueue(context).Queue;
+            var currPlaying = queue.First();
+
+            AddSkip(context, new Skip { SongUrl = currPlaying.URL, UserId = currUser.Id });
+
+            if (currUser.Id == currPlaying.QueuerId)
+            {
+                RemoveAllSkips(context);
+                await context.Channel.SendMessageAsync("Skipped the current track.");
+            }
+            else if (users.Count >= (player.VoiceChannel as SocketVoiceChannel).Users.Count / 3d)
+            {
+                RemoveAllSkips(context);
+                await context.Channel.SendMessageAsync("Skipped the current track.");
+            }
+            else
+            {
+                await context.Channel.SendMessageAsync($"{context.User} voted to skip the current track.");
+                return;
+            }
+
+            Dequeue(context);
+            var song = queue.First();
+            await PlayAsync(_manager, context, song);
         }
 
         public EmbedBuilder GenerateNowPlaying(Song song)

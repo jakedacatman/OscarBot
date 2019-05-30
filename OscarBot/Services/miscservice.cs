@@ -27,12 +27,14 @@ namespace OscarBot.Services
             "bruh",
             "HTTP 418 I'm a teapot",
             "I don't feel so good...",
-            "On your left!"
+            "On your left!",
+            "[insert funny phrase]"
         };
 
         public EmbedBuilder GenerateErrorMessage(Exception e)
         {
             Random r = new Random();
+            Console.WriteLine(e.ToString());
 
             EmbedBuilder embed = new EmbedBuilder()
                 .WithColor(RandomColor())

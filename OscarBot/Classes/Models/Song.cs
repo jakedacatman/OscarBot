@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace OscarBot.Classes
 {
@@ -7,11 +8,11 @@ namespace OscarBot.Classes
         public string URL { get; set; }
         public ulong QueuerId { get; set; }
         public string Name { get; set; }
-        [Key]
         public ulong GuildId { get; set; }
         public ulong ChannelId { get; set; }
         public string Length { get; set; }
         public string Author { get; set; }
         public string Thumbnail { get; set; }
+        public DateTime AddedAt { get; set; } = DateTime.UtcNow;
     }
 }

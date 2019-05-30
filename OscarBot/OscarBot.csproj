@@ -397,9 +397,17 @@
     <Compile Include="Classes\Models\Prefix.cs" />
     <Compile Include="Classes\CodeExitException.cs" />
     <Compile Include="Classes\Models\Song.cs" />
-    <Compile Include="Migrations\20190528231438_Create.cs" />
-    <Compile Include="Migrations\20190528231438_Create.designer.cs">
-      <DependentUpon>20190528231438_Create.cs</DependentUpon>
+    <Compile Include="Migrations\20190530013754_Create.cs" />
+    <Compile Include="Migrations\20190530013754_Create.designer.cs">
+      <DependentUpon>20190530013754_Create.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\20190530014512_RemUnused.cs" />
+    <Compile Include="Migrations\20190530014512_RemUnused.designer.cs">
+      <DependentUpon>20190530014512_RemUnused.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\20190530042456_RemGQueue.cs" />
+    <Compile Include="Migrations\20190530042456_RemGQueue.designer.cs">
+      <DependentUpon>20190530042456_RemGQueue.cs</DependentUpon>
     </Compile>
     <Compile Include="Migrations\EntityContextModelSnapshot.cs" />
     <Compile Include="Modules\imagemodule.cs" />
@@ -429,6 +437,7 @@
     <Analyzer Include="..\packages\Microsoft.CodeAnalysis.Analyzers.2.9.2\analyzers\dotnet\cs\Microsoft.CodeAnalysis.Analyzers.dll" />
     <Analyzer Include="..\packages\Microsoft.CodeAnalysis.Analyzers.2.9.2\analyzers\dotnet\cs\Microsoft.CodeAnalysis.CSharp.Analyzers.dll" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\packages\System.Data.SQLite.Core.1.0.110.0\build\net46\System.Data.SQLite.Core.targets" Condition="Exists('..\packages\System.Data.SQLite.Core.1.0.110.0\build\net46\System.Data.SQLite.Core.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

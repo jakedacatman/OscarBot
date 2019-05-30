@@ -28,16 +28,6 @@ namespace OscarBot.Migrations
                     b.ToTable("ApiKeys");
                 });
 
-            modelBuilder.Entity("OscarBot.Classes.GuildQueue", b =>
-                {
-                    b.Property<ulong>("GuildId")
-                        .ValueGeneratedOnAdd();
-
-                    b.HasKey("GuildId");
-
-                    b.ToTable("Queues");
-                });
-
             modelBuilder.Entity("OscarBot.Classes.ModerationAction", b =>
                 {
                     b.Property<ulong>("UserId")
@@ -84,72 +74,12 @@ namespace OscarBot.Migrations
                     b.ToTable("Prefixes");
                 });
 
-            modelBuilder.Entity("OscarBot.Classes.Skip", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd();
-
-                    b.Property<ulong?>("GuildQueueGuildId");
-
-                    b.Property<string>("SongUrl");
-
-                    b.Property<ulong>("UserId");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GuildQueueGuildId");
-
-                    b.ToTable("Skip");
-                });
-
-            modelBuilder.Entity("OscarBot.Classes.Song", b =>
-                {
-                    b.Property<ulong>("GuildId")
-                        .ValueGeneratedOnAdd();
-
-                    b.Property<string>("Author");
-
-                    b.Property<ulong>("ChannelId");
-
-                    b.Property<ulong?>("GuildQueueGuildId");
-
-                    b.Property<string>("Length");
-
-                    b.Property<string>("Name");
-
-                    b.Property<ulong>("QueuerId");
-
-                    b.Property<string>("Thumbnail");
-
-                    b.Property<string>("URL");
-
-                    b.HasKey("GuildId");
-
-                    b.HasIndex("GuildQueueGuildId");
-
-                    b.ToTable("Song");
-                });
-
             modelBuilder.Entity("OscarBot.Classes.ModerationAction", b =>
                 {
                     b.HasOne("OscarBot.Classes.ModerationActionCollection")
                         .WithMany("Actions")
                         .HasForeignKey("GuildId")
                         .OnDelete(DeleteBehavior.Cascade);
-                });
-
-            modelBuilder.Entity("OscarBot.Classes.Skip", b =>
-                {
-                    b.HasOne("OscarBot.Classes.GuildQueue")
-                        .WithMany("Skipped")
-                        .HasForeignKey("GuildQueueGuildId");
-                });
-
-            modelBuilder.Entity("OscarBot.Classes.Song", b =>
-                {
-                    b.HasOne("OscarBot.Classes.GuildQueue")
-                        .WithMany("Queue")
-                        .HasForeignKey("GuildQueueGuildId");
                 });
 #pragma warning restore 612, 618
         }

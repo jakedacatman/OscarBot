@@ -64,7 +64,15 @@ namespace OscarBot.Modules
                 if (quality < 0 || quality > 100) quality = 50;
                 if (url == null || !Uri.TryCreate(url.Trim('<', '>'), UriKind.Absolute, out Uri result))
                 {
-                    url = Context.Message.Attachments.First().Url;
+                    var att = Context.Message.Attachments;
+                    if (att.Count == 0)
+                    {
+                        await ReplyAsync("Enter a URL, or attach an image.");
+                        return;
+
+                    }
+                    url = att.First().Url;
+                    
                     if (url == null || !Uri.TryCreate(url.Trim('<', '>'), UriKind.Absolute, out result))
                     {
                         await ReplyAsync("Enter a URL, or attach an image.");

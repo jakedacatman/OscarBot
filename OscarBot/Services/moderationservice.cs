@@ -33,9 +33,10 @@ namespace OscarBot.Services
             if (counter == _client.Shards.Count)
             {
                 _client.ShardReady -= ShardReady;
-                return Task.Run(StartAsync);
+                Task.Run(StartAsync);
             }
-            else return Task.CompletedTask;
+
+            return Task.CompletedTask;
         }
 
         private async Task UpdateActions()

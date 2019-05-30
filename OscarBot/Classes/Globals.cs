@@ -17,8 +17,8 @@ namespace OscarBot.Classes
         public IServiceProvider Services { get; internal set; }
         public DbService _db { get; internal set; }
         public FakeConsole Console { get; internal set; }
-        public Random Random = new Random();
-        public string[] Imports = new string[]
+        public Random Random { get; internal set; } = new Random();
+        public string[] Imports { get; internal set; } = new string[]
         {
             "System",
             "System.Collections.Generic",
@@ -28,11 +28,14 @@ namespace OscarBot.Classes
             "Discord",
             "Discord.Commands",
             "Discord.WebSocket",
+            "Discord.API",
+            "Discord.Rest",
             "Discord.Addons.Interactive",
             "System.Diagnostics",
             "Microsoft.CodeAnalysis.CSharp.Scripting",
             "Microsoft.CodeAnalysis.Scripting",
             "System.Reflection",
+            "OscarBot",
             "OscarBot.Classes",
             "OscarBot.Modules",
             "OscarBot.Services",
@@ -41,7 +44,9 @@ namespace OscarBot.Classes
             "Newtonsoft.Json",
             "Newtonsoft.Json.Linq",
             "System.Numerics",
-            "Microsoft.EntityFrameworkCore"
+            "Microsoft.EntityFrameworkCore",
+            "Microsoft.Extensions.DependencyInjection",
+            "SharpLink"
         };
     }
 }

@@ -35,7 +35,8 @@ namespace OscarBot
                 AlwaysDownloadUsers = false,
                 ConnectionTimeout = int.MaxValue,
                 TotalShards = 4,
-                MessageCacheSize = 1024
+                MessageCacheSize = 1024,
+                ExclusiveBulkDelete = true
             });
 
             _commands = new CommandService(new CommandServiceConfig
@@ -97,7 +98,6 @@ namespace OscarBot
 
 
             _manager.Log += Log;
-
             _commands.Log += Log;
 
             await Task.Delay(-1);
@@ -107,8 +107,9 @@ namespace OscarBot
         {
             try
             {
-                Console.WriteLine($"{DateTime.Now,19} [{msg.Severity,8}] {msg.Source}: {msg.Message ?? msg.Exception.Message}");
-
+                var toWrite = $"{DateTime.Now,19} [{msg.Severity,8}] {msg.Source}: {msg.Message ?? "no message"}";
+                if (msg.Exception != null) toWrite += $" (exception: {msg.Exception})";
+                Console.WriteLine(toWrite);
                 return Task.CompletedTask;
             }
             catch (Exception e)
@@ -131,7 +132,7 @@ namespace OscarBot
                 if (!msg.HasStringPrefix(prefix, ref argPos)) return;
 
                 if (context.User.IsBot) return;
-                await _commands.ExecuteAsync(context, argPos, _services);
+                var result = await _commands.ExecuteAsync(context, argPos, _services);
             }
             catch (Exception e)
             {

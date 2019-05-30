@@ -50,160 +50,110 @@ namespace OscarBot.Modules
         [Summary("Adds a track from YouTube to be played, and starts the queue if you are in a voice channel.")]
         public async Task AddCmd([Summary("The URL to add from YouTube, or search term."), Remainder]string urlOrTerm)
         {
-            var msg = await ReplyAsync("Adding your requested track...");
-            IUserMessage nowPlayingMsg;
             try
             {
-                using (var scope = _services.CreateScope())
+                Song s;
+                var key = _db.GetApiKey("youtube");
+                urlOrTerm = urlOrTerm.Trim('<', '>');
+
+                if (Uri.TryCreate(urlOrTerm, UriKind.Absolute, out Uri uriResult) && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps))
                 {
-                    var _cx = scope.ServiceProvider.GetRequiredService<EntityContext>();
-
-                    Song s;
-                    var key = _db.GetApiKey("youtube");
-                    urlOrTerm = urlOrTerm.Trim('<', '>');
-
-                    if (Uri.TryCreate(urlOrTerm, UriKind.Absolute, out Uri uriResult) && (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps))
+                    using (WebClient client = new WebClient())
                     {
-                        using (WebClient client = new WebClient())
+                        Regex regex = new Regex("youtu(?:.be|be.com)/(?:.*v(?:/|=)|(?:.*/)?)([a-zA-Z0-9-_]+)");
+                        var id = regex.Match(urlOrTerm).Groups[1].Value;
+
+                        var json = await client.DownloadStringTaskAsync($"https://www.googleapis.com/youtube/v3/videos?id={id}&key={key}&part=snippet,contentDetails,statistics,status");
+                        JObject obj = JsonConvert.DeserializeObject<JObject>(json);
+
+                        if (obj.SelectToken("pageInfo").SelectToken("totalResults").Value<int>() == 0) return;
+
+                        s = new Song
                         {
-                            Regex regex = new Regex("youtu(?:.be|be.com)/(?:.*v(?:/|=)|(?:.*/)?)([a-zA-Z0-9-_]+)");
-                            var id = regex.Match(urlOrTerm).Groups[1].Value;
+                            URL = $"https://www.youtube.com/watch?v={id}",
+                            QueuerId = Context.User.Id,
+                            ChannelId = Context.Channel.Id,
+                            GuildId = Context.Guild.Id,
+                            Author = obj.SelectToken("items").First.SelectToken("snippet.channelTitle").Value<string>(),
+                            Name = obj.SelectToken("items").First.SelectToken("snippet.title").Value<string>(),
+                            Length = $"{System.Xml.XmlConvert.ToTimeSpan(obj.SelectToken("items").First.SelectToken("contentDetails.duration").Value<string>()):g}",
+                            Thumbnail = obj.SelectToken("items").First.SelectToken("snippet.thumbnails.high.url").Value<string>()
+                        };
 
-                            var json = await client.DownloadStringTaskAsync($"https://www.googleapis.com/youtube/v3/videos?id={id}&key={key}&part=snippet,contentDetails,statistics,status");
-                            JObject obj = JsonConvert.DeserializeObject<JObject>(json);
-
-                            if (obj.SelectToken("pageInfo").SelectToken("totalResults").Value<int>() == 0) return;
-
-                            s = new Song
-                            {
-                                URL = $"https://www.youtube.com/watch?v={id}",
-                                QueuerId = Context.User.Id,
-                                ChannelId = Context.Channel.Id,
-                                GuildId = Context.Guild.Id,
-                                Author = obj.SelectToken("items").First.SelectToken("snippet.channelTitle").Value<string>(),
-                                Name = obj.SelectToken("items").First.SelectToken("snippet.title").Value<string>(),
-                                Length = $"{System.Xml.XmlConvert.ToTimeSpan(obj.SelectToken("items").First.SelectToken("contentDetails.duration").Value<string>()):g}",
-                                Thumbnail = obj.SelectToken("items").First.SelectToken("snippet.thumbnails.high.url").Value<string>()
-                            };
-
-                            await (await _ms.GetGuildQueue(Context.Guild.Id)).QueueUp(Context.Guild.Id, s, _cx);
-
-                            await msg.ModifyAsync(x =>
-                            {
-                                x.Content = " ";
-                                x.Embed = _ms.GenerateAddedMsg(s).Build();
-                            });
-                        }
+                        _ms.AddSong(Context, s);
                     }
-                    else
+                }
+                else
+                {
+                    YouTubeService y = new YouTubeService(new BaseClientService.Initializer() { ApiKey = key });
+
+                    var request = y.Search.List("snippet");
+                    request.Q = urlOrTerm;
+                    request.Type = "video";
+                    request.MaxResults = 10;
+
+                    var response = await request.ExecuteAsync();
+
+                    List<string> titles = new List<string>();
+                    int counter = 1;
+
+                    foreach (var result in response.Items)
                     {
-                        YouTubeService y = new YouTubeService(new BaseClientService.Initializer() { ApiKey = key });
-
-                        var request = y.Search.List("snippet");
-                        request.Q = urlOrTerm;
-                        request.Type = "video";
-                        request.MaxResults = 10;
-
-                        var response = await request.ExecuteAsync();
-
-                        List<string> titles = new List<string>();
-                        int counter = 1;
-
-                        foreach (var result in response.Items)
-                        {
-                            titles.Add(counter.ToString() + ". " + result.Snippet.Title + $" *by {result.Snippet.ChannelTitle}*");
-                            counter++;
-                        }
-
-                        EmbedBuilder embed = new EmbedBuilder()
-                            .WithColor(_misc.RandomColor())
-                            .WithTitle("Respond with the number that you want to add.")
-                            .WithCurrentTimestamp()
-                            .WithDescription($"**{string.Join("**\n**", titles)}**");
-
-                        var message = await ReplyAsync(embed: embed.Build());
-                        var nextMsg = await NextMessageAsync(timeout: TimeSpan.FromSeconds(30));
-                        if (!int.TryParse(nextMsg.Content, out int number))
-                        {
-                            await msg.DeleteAsync();
-                            await message.DeleteAsync();
-                            return;
-                        }
-                        if (number > 10 || number < 1)
-                        {
-                            await msg.DeleteAsync();
-                            await message.DeleteAsync();
-                            return;
-                        }
-                        var id = response.Items[number - 1].Id.VideoId;
-
-                        using (WebClient client = new WebClient())
-                        {
-                            var json = await client.DownloadStringTaskAsync($"https://www.googleapis.com/youtube/v3/videos?id={id}&key={key}&part=snippet,contentDetails,statistics,status");
-                            JObject obj = JsonConvert.DeserializeObject<JObject>(json);
-
-                            s = new Song
-                            {
-                                URL = $"https://www.youtube.com/watch?v={id}",
-                                QueuerId = Context.User.Id,
-                                ChannelId = Context.Channel.Id,
-                                GuildId = Context.Guild.Id,
-                                Author = obj.SelectToken("items").First.SelectToken("snippet.channelTitle").Value<string>(),
-                                Name = obj.SelectToken("items").First.SelectToken("snippet.title").Value<string>(),
-                                Length = $"{System.Xml.XmlConvert.ToTimeSpan(obj.SelectToken("items").First.SelectToken("contentDetails.duration").Value<string>()):g}",
-                                Thumbnail = obj.SelectToken("items").First.SelectToken("snippet.thumbnails.high.url").Value<string>()
-                            };
-                            if (obj.SelectToken("items").First.SelectToken("snippet.title").Value<string>() == null) return;
-
-                            await (await _ms.GetGuildQueue(Context.Guild.Id)).QueueUp(Context.Guild.Id, s, _cx);
-
-                            await msg.ModifyAsync(x =>
-                            {
-                                x.Content = " ";
-                                x.Embed = _ms.GenerateAddedMsg(s).Build();
-                            });
-                            await message.DeleteAsync();
-
-                        }
+                        titles.Add(counter.ToString() + ". " + result.Snippet.Title + $" *by {result.Snippet.ChannelTitle}*");
+                        counter++;
                     }
 
+                    EmbedBuilder embed = new EmbedBuilder()
+                        .WithColor(_misc.RandomColor())
+                        .WithTitle("Respond with the number that you want to add.")
+                        .WithCurrentTimestamp()
+                        .WithDescription($"**{string.Join("**\n**", titles)}**");
 
-                    var player = _manager.GetPlayer(Context.Guild.Id);
-                    if (player != null && player.Playing) return;
-
-                    var voiceChannel = (Context.User as SocketGuildUser).VoiceChannel;
-
-                    if (voiceChannel == null) return;
-
-                    if (player != null)
+                    var message = await ReplyAsync(embed: embed.Build());
+                    var nextMsg = await NextMessageAsync(timeout: TimeSpan.FromSeconds(30));
+                    if (!int.TryParse(nextMsg.Content, out int number))
                     {
-                        await player.DisconnectAsync();
-                        player = null;
+                        await message.DeleteAsync();
+                        return;
                     }
+                    if (number > 10 || number < 1)
+                    {
+                        await message.DeleteAsync();
+                        return;
+                    }
+                    var id = response.Items[number - 1].Id.VideoId;
 
-                    if (player == null && Context.Guild.CurrentUser.VoiceChannel != null)
-                        await Context.Guild.CurrentUser.VoiceChannel.DisconnectAsync();
+                    using (WebClient client = new WebClient())
+                    {
+                        var json = await client.DownloadStringTaskAsync($"https://www.googleapis.com/youtube/v3/videos?id={id}&key={key}&part=snippet,contentDetails,statistics,status");
+                        JObject obj = JsonConvert.DeserializeObject<JObject>(json);
 
-                    if (player == null) player = await _manager.JoinAsync(voiceChannel);
+                        s = new Song
+                        {
+                            URL = $"https://www.youtube.com/watch?v={id}",
+                            QueuerId = Context.User.Id,
+                            ChannelId = Context.Channel.Id,
+                            GuildId = Context.Guild.Id,
+                            Author = obj.SelectToken("items").First.SelectToken("snippet.channelTitle").Value<string>(),
+                            Name = obj.SelectToken("items").First.SelectToken("snippet.title").Value<string>(),
+                            Length = $"{System.Xml.XmlConvert.ToTimeSpan(obj.SelectToken("items").First.SelectToken("contentDetails.duration").Value<string>()):g}",
+                            Thumbnail = obj.SelectToken("items").First.SelectToken("snippet.thumbnails.high.url").Value<string>()
+                        };
+                        if (obj.SelectToken("items").First.SelectToken("snippet.title").Value<string>() == null) return;
 
-                    var tracks = await _manager.GetTracksAsync(s.URL);
-                    var track = tracks.Tracks.Where(x => x.Url != null).FirstOrDefault();
+                        _ms.AddSong(Context, s);
 
-                    nowPlayingMsg = await ReplyAsync(embed: _ms.GenerateNowPlaying(s).Build());
-
-                    await player.SetVolumeAsync(100);
-                    await player.PlayAsync(track);
+                    }
                 }
 
+                await _ms.PlayAsync(_manager, Context, s);
             }
             catch (System.Net.Http.HttpRequestException)
             {
-                await msg.DeleteAsync();
-                nowPlayingMsg = await ReplyAsync($"The bot has not connected to Lavalink yet. Please wait a few moments...");
+                await ReplyAsync($"The bot has not connected to Lavalink yet. Please wait a few moments...");
             }
             catch (Exception e)
             {
-                await msg.DeleteAsync();
                 await ReplyAsync(embed: _misc.GenerateErrorMessage(e).Build());
             }
         }
@@ -215,38 +165,15 @@ namespace OscarBot.Modules
         {
             try
             {
-                using (var scope = _services.CreateScope())
+                LavalinkPlayer player = _manager.GetPlayer(Context.Guild.Id);
+                if (player == null || player.Playing == false)
                 {
-                    var _db = scope.ServiceProvider.GetRequiredService<EntityContext>();
-
-                    LavalinkPlayer player = _manager.GetPlayer(Context.Guild.Id);
-                    if (player == null || player.Playing == false)
-                    {
-                        await ReplyAsync("No track is playing.");
-                        return;
-                    }
-
-                    var s = (await _ms.GetGuildQueue(Context.Guild.Id)).First();
-
-                    var fields = new List<EmbedFieldBuilder>()
-            {
-                new EmbedFieldBuilder().WithName("**Title:**").WithValue(s.Name).WithIsInline(false),
-                new EmbedFieldBuilder().WithName("**Length:**").WithValue(s.Length).WithIsInline(true),
-                new EmbedFieldBuilder().WithName("**Author:**").WithValue(s.Author).WithIsInline(true),
-                new EmbedFieldBuilder().WithName("**URL:**").WithValue($"<{s.URL}>").WithIsInline(false)
-            };
-
-                    var songEmbed = new EmbedBuilder()
-                        .WithColor(_misc.RandomColor())
-                        .WithTitle("Song added!")
-                        .WithThumbnailUrl(s.Thumbnail)
-                        .WithFields(fields)
-                        .WithCurrentTimestamp();
-
-                    await (await _ms.GetGuildQueue(Context.Guild.Id)).QueueUp(Context.Guild.Id, s, _db);
-
-                    await ReplyAsync(embed: songEmbed.Build());
+                    await ReplyAsync("No track is playing.");
+                    return;
                 }
+
+                var s = _ms.GetQueue(Context).First();
+                _ms.AddSong(Context, s);
             }
             catch (Exception e)
             {
@@ -262,7 +189,7 @@ namespace OscarBot.Modules
             try
             {
                 LavalinkPlayer player = _manager.GetPlayer(Context.Guild.Id);
-                var s = (await _ms.GetGuildQueue(Context.Guild.Id)).First();
+                var s = _ms.GetQueue(Context).First();
 
                 if (player == null || player.Playing == false)
                 {
@@ -280,9 +207,7 @@ namespace OscarBot.Modules
                 var len = player.CurrentTrack.Length;
 
                 var totalLen = 40;
-
                 var interval = Math.Round(len.TotalMilliseconds / totalLen, 2);
-
                 var signNo = Math.Round(currPos.TotalMilliseconds / interval, 2);
 
                 EmbedBuilder embed = new EmbedBuilder()
@@ -312,7 +237,7 @@ namespace OscarBot.Modules
         {
             try
             {
-                ICollection<Song> queue = await _ms.GetGuildQueue(Context.Guild.Id);
+                Queue<Song> queue = _ms.GetQueue(Context);
 
                 List<string> titles = new List<string>();
 
@@ -356,32 +281,14 @@ namespace OscarBot.Modules
         {
             try
             {
-                var player = _manager.GetPlayer(Context.Guild.Id);
-
-                if (player != null && player.Playing) return;
-
-                var voiceChannel = (Context.User as SocketGuildUser).VoiceChannel;
-
-                if (voiceChannel != null)
-                {
-                    await voiceChannel.ConnectAsync(false, false, true);
-                    await voiceChannel.DisconnectAsync();
-                }
-                else return;
-
-                player = await _manager.JoinAsync(voiceChannel);
-
-                Song song = (await _ms.GetGuildQueue(Context.Guild.Id)).First();
+                Song song;
+                var queue = _ms.GetQueue(Context);
+                if (queue.Count == 0) return;
+                song = queue.First();
 
                 if (song == null) return;
 
-                var tracks = await _manager.GetTracksAsync(song.URL);
-                var track = tracks.Tracks.Where(x => x.Url != null).FirstOrDefault();
-
-                await ReplyAsync(embed: _ms.GenerateNowPlaying(song).Build());
-
-                await player.SetVolumeAsync(100);
-                await player.PlayAsync(track);
+                await _ms.PlayAsync(_manager, Context, song);
             }
             catch (Exception e)
             {
@@ -398,7 +305,7 @@ namespace OscarBot.Modules
             {
                 var player = _manager.GetPlayer(Context.Guild.Id);
                 var user = Context.User;
-                var song = (await _ms.GetGuildQueue(Context.Guild.Id)).First();
+                var song = _ms.GetQueue(Context).First();
 
                 if (player == null || !player.Playing) return;
                 if (!(user as SocketGuildUser).GuildPermissions.DeafenMembers || !user.IsQueuer(song)) return;
@@ -422,40 +329,7 @@ namespace OscarBot.Modules
         {
             try
             {
-                using (var scope = _services.CreateScope())
-                {
-                    var _db = scope.ServiceProvider.GetRequiredService<EntityContext>();
-
-                    var currUser = (SocketGuildUser)Context.User;
-                    var users = await _ms.GetSkips(Context.Guild.Id);
-                    if (users.Where(x => x.UserId == currUser.Id).Count() > 0) return;
-
-                    var player = _manager.GetPlayer(Context.Guild.Id);
-                    if (player == null) return;
-
-                    var song = (await _ms.GetGuildQueue(Context.Guild.Id)).First();
-                    if (song == null) return;
-
-                    await users.AddUser(new Skip { SongUrl = song.URL, UserId = currUser.Id }, Context.Guild.Id, _db);
-
-                    if (currUser.Id == song.QueuerId)
-                    {
-                        await users.RemoveUsers(Context.Guild.Id, _db);
-                        await player.SeekAsync((int)player.CurrentTrack.Length.TotalMilliseconds);
-                        await ReplyAsync("Skipped the current track.");
-                    }
-                    else
-                    {
-                        await ReplyAsync($"{Context.User} voted to skip the current track.");
-                    }
-
-                    if (users.Count >= (player.VoiceChannel as SocketVoiceChannel).Users.Count / 3d)
-                    {
-                        await users.RemoveUsers(Context.Guild.Id, _db);
-                        await player.SeekAsync((int)player.CurrentTrack.Length.TotalMilliseconds);
-                        await ReplyAsync("Skipped the current track.");
-                    }
-                }
+                await _ms.SkipAsync(_manager, Context);
             }
             catch (Exception e)
             {
@@ -469,7 +343,7 @@ namespace OscarBot.Modules
         {
             try
             {
-                var skips = await _ms.GetSkips(Context.Guild.Id);
+                var skips = _ms.GetSkips(Context);
                 if (skips.Count() == 0) return;
 
                 var users = new List<SocketGuildUser>();
@@ -498,19 +372,18 @@ namespace OscarBot.Modules
         {
             try
             {
-                var stats = _stats;
-                if (stats == null)
+                if (_stats == null)
                 {
                     await ReplyAsync("No stats have been received yet.");
                     return;
                 }
                 var statsFields = new List<EmbedFieldBuilder>()
                 {
-                    new EmbedFieldBuilder().WithName("CPU:").WithValue(stats.CPU.LavalinkLoad).WithIsInline(true),
-                    new EmbedFieldBuilder().WithName("Percentage used of allocated memory:").WithValue(Math.Round(stats.Memory.Used / (double)stats.Memory.Allocated)).WithIsInline(true),
-                    new EmbedFieldBuilder().WithName("Players:").WithValue($"{stats.Players} ({stats.PlayingPlayers} playing)").WithIsInline(true),
-                    new EmbedFieldBuilder().WithName("Uptime:").WithValue($"{TimeSpan.FromMilliseconds(stats.Uptime):g}").WithIsInline(true),
-                    new EmbedFieldBuilder().WithName("Frames sent:").WithValue(stats.FrameStats.Sent).WithIsInline(true),
+                    new EmbedFieldBuilder().WithName("CPU:").WithValue(_stats.CPU.LavalinkLoad).WithIsInline(true),
+                    new EmbedFieldBuilder().WithName("Percentage used of allocated memory:").WithValue(Math.Round(_stats.Memory.Used / (double)_stats.Memory.Allocated)).WithIsInline(true),
+                    new EmbedFieldBuilder().WithName("Players:").WithValue($"{_stats.Players} ({_stats.PlayingPlayers} playing)").WithIsInline(true),
+                    new EmbedFieldBuilder().WithName("Uptime:").WithValue($"{TimeSpan.FromMilliseconds(_stats.Uptime):g}").WithIsInline(true),
+                    new EmbedFieldBuilder().WithName("Frames sent:").WithValue(_stats.FrameStats.Sent).WithIsInline(true),
                 };
 
                 var em = new EmbedBuilder()
@@ -534,37 +407,34 @@ namespace OscarBot.Modules
 
         private async Task TrackEnd(LavalinkPlayer player, LavalinkTrack oldTrack, string reason)
         {
-            using (var scope = _services.CreateScope())
+            if (reason == "REPLACED") return;
+
+            var guildId = player.VoiceChannel.GuildId;
+            var queue = _ms.GetQueue(guildId);
+            var cId = _ms.GetChannelId(guildId);
+
+            var msgChannel = player.VoiceChannel.Guild.GetChannelAsync(cId) as ISocketMessageChannel;
+
+            if (queue.Count == 0)
             {
-                var _db = scope.ServiceProvider.GetRequiredService<EntityContext>();
-
-                var queue = await _ms.GetGuildQueue(player.VoiceChannel.GuildId);
-                var song = await queue.Pop(Context.Guild.Id, _db);
-
-                var msgChannel = player.VoiceChannel.Guild.GetChannelAsync(song.ChannelId) as ISocketMessageChannel;
-
-                if (song == null)
-                {
-                    await msgChannel.SendMessageAsync("The last song in my queue has finished...");
-                    await player.DisconnectAsync();
-                    return;
-                }
-
-                if ((player.VoiceChannel as SocketVoiceChannel).Users.Count == 1 && (player.VoiceChannel as SocketVoiceChannel).Users.First().Id == Context.Client.CurrentUser.Id)
-                {
-                    await msgChannel.SendMessageAsync("There are no users in my voice channel...");
-                    await player.DisconnectAsync();
-                    return;
-                }
-                var tracks = await _manager.GetTracksAsync(song.URL);
-
-                var track = tracks.Tracks.First();
-
-                await ReplyAsync(embed: _ms.GenerateNowPlaying(song).Build());
-
-                await player.PlayAsync(track);
-                await player.SetVolumeAsync(100);
+                await msgChannel.SendMessageAsync("The last song in my queue has finished...");
+                await player.DisconnectAsync();
+                return;
             }
+            var users = (player.VoiceChannel as SocketVoiceChannel).Users;
+
+            if (users.Count == 1 && users.Any(x => x.Id == Context.Client.CurrentUser.Id))
+            {
+                await msgChannel.SendMessageAsync("There are no users in my voice channel...");
+                await player.DisconnectAsync();
+                return;
+            }
+
+            _ms.Dequeue(guildId);
+            queue = _ms.GetQueue(guildId);
+            if (queue.Count == 0) return;
+
+            await _ms.PlayAsync(_manager, Context, queue.First());
         }
     }
     

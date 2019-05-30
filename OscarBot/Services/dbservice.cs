@@ -7,6 +7,7 @@ using OscarBot.Classes;
 using Discord.WebSocket;
 using System.IO;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
 
 namespace OscarBot.Services
 {
