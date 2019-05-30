@@ -18,14 +18,14 @@ namespace OscarBot.Services
     {
         private readonly DiscordShardedClient _client;
         private readonly MiscService _misc;
-        private readonly IServiceProvider _services;
+        private readonly LavalinkManager _manager;
         private readonly ConcurrentDictionary<ulong, GuildQueue> _queues = new ConcurrentDictionary<ulong, GuildQueue>();
 
-        public MusicService(DiscordShardedClient client, MiscService misc, IServiceProvider services)
+        public MusicService(DiscordShardedClient client, MiscService misc, LavalinkManager manager)
         {
             _client = client;
             _misc = misc;
-            _services = services;
+            _manager = manager;
         }
 
         public Queue<Song> GetQueue(ShardedCommandContext context)
@@ -61,7 +61,7 @@ namespace OscarBot.Services
             return queue;
         }
 
-        public bool AddSong(ShardedCommandContext context, Song s)
+        public async Task AddSongAsync(ShardedCommandContext context, Song s)
         {
             var fields = new List<EmbedFieldBuilder>()
             {
@@ -81,45 +81,33 @@ namespace OscarBot.Services
             var gq = GetGuildQueue(context);
             gq.Queue.Enqueue(s);
 
-            return _queues.Update(context.Guild.Id, gq);
+            await context.Channel.SendMessageAsync(embed: songEmbed.Build());
         }
 
-        private bool AddSkip(ShardedCommandContext context, Skip s)
+        private void AddSkip(ShardedCommandContext context, Skip s)
         {
             var gq = GetGuildQueue(context);
             gq.Skipped.Add(s);
-
-            return _queues.Update(context.Guild.Id, gq);
         }
 
-        private bool RemoveAllSkips(ShardedCommandContext context)
+        private void RemoveAllSkips(ShardedCommandContext context)
         {
             var gq = GetGuildQueue(context);
             gq.Skipped.RemoveAll(x => x.UserId >= 0);
-
-            return _queues.Update(context.Guild.Id, gq);
         }
 
         public Song Dequeue(ShardedCommandContext context)
         {
             var gq = GetGuildQueue(context);
-            var song = gq.Queue.Dequeue();
-
-            _queues.Update(context.Guild.Id, gq);
-
-            return song;
+            return gq.Queue.Dequeue();
         }
         public Song Dequeue(ulong guildId)
         {
             var gq = GetGuildQueue(guildId);
-            var song = gq.Queue.Dequeue();
-
-            _queues.Update(guildId, gq);
-
-            return song;
+            return gq.Queue.Dequeue();
         }
 
-        public async Task<bool> PlayAsync(LavalinkManager _manager, ShardedCommandContext context, Song s)
+        public async Task<bool> PlayAsync(ShardedCommandContext context, Song s)
         {
             var player = _manager.GetPlayer(context.Guild.Id);
             if (player != null && player.Playing) return false;
@@ -145,7 +133,6 @@ namespace OscarBot.Services
             await context.Channel.SendMessageAsync(embed: GenerateNowPlaying(s).Build());
 
             await player.SetVolumeAsync(100);
-            await player.PlayAsync(track);
 
             var timeout = Task.Delay(track.Length);
 
@@ -156,6 +143,7 @@ namespace OscarBot.Services
                 return Task.CompletedTask;
             }
             _manager.TrackEnd += TrackFinish;
+            await player.PlayAsync(track);
             var t = await Task.WhenAny(p.Task, timeout);
             _manager.TrackEnd -= TrackFinish;
 
@@ -171,7 +159,7 @@ namespace OscarBot.Services
             }
         }
 
-        public async Task SkipAsync(LavalinkManager _manager, ShardedCommandContext context)
+        public async Task SkipAsync(ShardedCommandContext context)
         {
             var player = _manager.GetPlayer(context.Guild.Id);
             if (player == null || !player.Playing) return;
@@ -184,7 +172,7 @@ namespace OscarBot.Services
 
             var currUser = (SocketGuildUser)context.User;
             var users = GetSkips(context);
-            if (users.Where(x => x.UserId == currUser.Id).Count() > 0) return;
+            if (users.Where(x => x.UserId == currUser.Id).Any()) return;
 
             var queue = GetGuildQueue(context).Queue;
             var currPlaying = queue.First();
@@ -209,7 +197,7 @@ namespace OscarBot.Services
 
             Dequeue(context);
             var song = queue.First();
-            await PlayAsync(_manager, context, song);
+            await PlayAsync(context, song);
         }
 
         public EmbedBuilder GenerateNowPlaying(Song song)

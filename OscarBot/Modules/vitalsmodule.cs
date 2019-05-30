@@ -124,7 +124,7 @@ namespace OscarBot.Modules
             try
             {
                 var cmds = _commands.Commands.Where(x => x.Name == command);
-                if (cmds.Count() > 0)
+                if (cmds.Any())
                 {
                     var firstCmd = cmds.First();
 
@@ -146,7 +146,7 @@ namespace OscarBot.Modules
                             parameters.Add($"{param} ({param.Summary})");
                         }
                         
-                        sb.Append($"**{counter}.**\n " + (parameters.Count > 0 ? string.Join("\n", parameters) : "(none)") + "\n\n");
+                        sb.Append($"**{counter}.**\n " + (parameters.Any() ? string.Join("\n", parameters) : "(none)") + "\n\n");
                         counter++;
                     }
 

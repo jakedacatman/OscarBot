@@ -11,6 +11,9 @@
 *.sln.docstates
 *.db
 
+
+Migrations/
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
@@ -22,7 +25,6 @@ mono_crash.*
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
-[Mm]igrations/
 x64/
 x86/
 [Aa][Rr][Mm]/

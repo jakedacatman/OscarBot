@@ -397,19 +397,6 @@
     <Compile Include="Classes\Models\Prefix.cs" />
     <Compile Include="Classes\CodeExitException.cs" />
     <Compile Include="Classes\Models\Song.cs" />
-    <Compile Include="Migrations\20190530013754_Create.cs" />
-    <Compile Include="Migrations\20190530013754_Create.designer.cs">
-      <DependentUpon>20190530013754_Create.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\20190530014512_RemUnused.cs" />
-    <Compile Include="Migrations\20190530014512_RemUnused.designer.cs">
-      <DependentUpon>20190530014512_RemUnused.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\20190530042456_RemGQueue.cs" />
-    <Compile Include="Migrations\20190530042456_RemGQueue.designer.cs">
-      <DependentUpon>20190530042456_RemGQueue.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Migrations\EntityContextModelSnapshot.cs" />
     <Compile Include="Modules\imagemodule.cs" />
     <Compile Include="Modules\miscmodule.cs" />
     <Compile Include="Modules\moderatormodule.cs" />

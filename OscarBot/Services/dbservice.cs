@@ -38,7 +38,7 @@ namespace OscarBot.Services
                 var _db = scope.ServiceProvider.GetRequiredService<EntityContext>();
 
                 var query = _db.ApiKeys.Where(x => x.Service == service);
-                return query.Count() > 0 ? query.Single().Key : null;
+                return query.Any() ? query.Single().Key : null;
             }
         }
 

@@ -80,7 +80,7 @@ namespace OscarBot.Modules
                             Thumbnail = obj.SelectToken("items").First.SelectToken("snippet.thumbnails.high.url").Value<string>()
                         };
 
-                        _ms.AddSong(Context, s);
+                        await _ms.AddSongAsync(Context, s);
                     }
                 }
                 else
@@ -141,12 +141,13 @@ namespace OscarBot.Modules
                         };
                         if (obj.SelectToken("items").First.SelectToken("snippet.title").Value<string>() == null) return;
 
-                        _ms.AddSong(Context, s);
+                        await message.DeleteAsync();
 
+                        await _ms.AddSongAsync(Context, s);
                     }
                 }
 
-                await _ms.PlayAsync(_manager, Context, s);
+                await _ms.PlayAsync(Context, s);
             }
             catch (System.Net.Http.HttpRequestException)
             {
@@ -173,7 +174,7 @@ namespace OscarBot.Modules
                 }
 
                 var s = _ms.GetQueue(Context).First();
-                _ms.AddSong(Context, s);
+                await _ms.AddSongAsync(Context, s);
             }
             catch (Exception e)
             {
@@ -288,7 +289,7 @@ namespace OscarBot.Modules
 
                 if (song == null) return;
 
-                await _ms.PlayAsync(_manager, Context, song);
+                await _ms.PlayAsync(Context, song);
             }
             catch (Exception e)
             {
@@ -329,7 +330,7 @@ namespace OscarBot.Modules
         {
             try
             {
-                await _ms.SkipAsync(_manager, Context);
+                await _ms.SkipAsync(Context);
             }
             catch (Exception e)
             {
@@ -434,7 +435,7 @@ namespace OscarBot.Modules
             queue = _ms.GetQueue(guildId);
             if (queue.Count == 0) return;
 
-            await _ms.PlayAsync(_manager, Context, queue.First());
+            await _ms.PlayAsync(Context, queue.First());
         }
     }
     

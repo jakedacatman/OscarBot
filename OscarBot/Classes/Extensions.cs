@@ -34,14 +34,4 @@ namespace OscarBot.Classes
             return false;
         }
     }
-
-    public static class ConcurrentDictionaryExtensions
-    {
-        public static bool Update<T, H>(this ConcurrentDictionary<T, H> dict, T key, H thing)
-        {
-            var didRemove = dict.TryRemove(key, out H _);
-            var didAdd = dict.TryAdd(key, thing);
-            return didRemove && didAdd;
-        }
-    }
 }

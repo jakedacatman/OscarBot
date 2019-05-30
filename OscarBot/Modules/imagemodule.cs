@@ -108,7 +108,7 @@ namespace OscarBot.Modules
             try
             {
                 if (quality < 0 || quality > 100) quality = 50;
-                    string url = Context.Message.Attachments.Count > 0 ? Context.Message.Attachments.First().Url.Trim('<', '>') : Context.User.GetAvatarUrl(ImageFormat.Auto, 512);
+                    string url = Context.Message.Attachments.Any() ? Context.Message.Attachments.First().Url.Trim('<', '>') : Context.User.GetAvatarUrl(ImageFormat.Auto, 512);
                 if (url == null || !Uri.IsWellFormedUriString(url, UriKind.Absolute))
                 {
                     await ReplyAsync("Attach an image.");

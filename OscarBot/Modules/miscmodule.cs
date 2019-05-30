@@ -82,7 +82,7 @@ namespace OscarBot.Modules
                 var cErrors = compile.Where(x => x.Severity == DiagnosticSeverity.Error);
                 s.Stop();
 
-                if (cErrors.Count() > 0)
+                if (cErrors.Any())
                 {
                     await msg.ModifyAsync(async x =>
                     {
@@ -143,7 +143,7 @@ namespace OscarBot.Modules
                         description = $"in: ```cs\n{code}```\nout: \n```{result}```";
 
                     var em = new EmbedBuilder()
-                            .WithFooter($"Return type: {(result == null ? typeof(void) : result.GetType())} • took {s.ElapsedTicks / 10000d} ms to compile and {c.ElapsedTicks / 10000d} ms to execute")
+                            .WithFooter($"Return type: {(result == null ? "null" : result.GetType().ToString())} • took {s.ElapsedTicks / 10000d} ms to compile and {c.ElapsedTicks / 10000d} ms to execute")
                             .WithDescription(description.Length < 2048 ? description : $"in: ```cs\n{code}```\n \nout: **Output was too long for the embed, so here's a [link]({await UploadToBisogaAsync(result.ToString())}) to the result:**")
                             .WithColor(Color.Green);
 

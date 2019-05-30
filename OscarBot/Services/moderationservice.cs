@@ -44,7 +44,7 @@ namespace OscarBot.Services
             foreach (var g in _client.Guilds)
             {
                 var actions = await GetModerationActionsAsync(g.Id);
-                if (actions.Actions.Count > 0) _actions.Add(actions);
+                if (actions.Actions.Any()) _actions.Add(actions);
             }
         }
 
@@ -59,7 +59,7 @@ namespace OscarBot.Services
                     await Task.Delay(1000);
 
                     await UpdateActions();
-                    if (_actions.Count > 0)
+                    if (_actions.Any())
                     {
                         Console.WriteLine($"{DateTime.Now,19} [{"Verbose",8}] ModeratorService: Attempting to revert actions.");
                         foreach (var action in _actions.SelectMany(x => x.Actions.Where(y => DateTime.UtcNow >= y.ReverseAfter)))
