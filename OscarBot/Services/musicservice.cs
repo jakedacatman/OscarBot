@@ -7,9 +7,8 @@ using System.Threading.Tasks;
 using OscarBot.Classes;
 using Discord.WebSocket;
 using Discord;
-using Microsoft.EntityFrameworkCore;
-using SharpLink;
-using Microsoft.Extensions.DependencyInjection;
+using Victoria;
+using Victoria.Entities;
 
 
 namespace OscarBot.Services
@@ -18,14 +17,18 @@ namespace OscarBot.Services
     {
         private readonly DiscordShardedClient _client;
         private readonly MiscService _misc;
-        private readonly LavalinkManager _manager;
+        private readonly LavaShardClient _manager;
+        private readonly LavaRestClient _lavaRestClient;
         private readonly ConcurrentDictionary<ulong, GuildQueue> _queues = new ConcurrentDictionary<ulong, GuildQueue>();
+        private ServerStats _stats = null;
 
-        public MusicService(DiscordShardedClient client, MiscService misc, LavalinkManager manager)
+        public MusicService(DiscordShardedClient client, MiscService misc, LavaShardClient manager, LavaRestClient lavaRestClient)
         {
             _client = client;
             _misc = misc;
             _manager = manager;
+            _lavaRestClient = lavaRestClient;
+            _manager.OnTrackFinished += TrackEnd;
         }
 
         public Queue<Song> GetQueue(ShardedCommandContext context)
@@ -107,62 +110,81 @@ namespace OscarBot.Services
             return gq.Queue.Dequeue();
         }
 
-        public async Task<bool> PlayAsync(ShardedCommandContext context, Song s)
+        public EmbedBuilder GetStats()
+        {
+            if (_stats == null)
+            {
+                return new EmbedBuilder()
+                    .WithColor(_misc.RandomColor())
+                    .WithTitle("Lavalink Stats")
+                    .WithDescription("No stats have been received yet.")
+                    .WithCurrentTimestamp();
+            }
+            var statsFields = new List<EmbedFieldBuilder>()
+                {
+                    new EmbedFieldBuilder().WithName("CPU:").WithValue(_stats.Cpu).WithIsInline(true),
+                    new EmbedFieldBuilder().WithName("Percentage used of allocated memory:").WithValue(Math.Round(_stats.Memory.Used / (double)_stats.Memory.Allocated)).WithIsInline(true),
+                    new EmbedFieldBuilder().WithName("Players:").WithValue($"{_stats.PlayerCount} ({_stats.PlayingPlayers} playing)").WithIsInline(true),
+                    new EmbedFieldBuilder().WithName("Uptime:").WithValue($"{_stats.Uptime:g}").WithIsInline(true),
+                    new EmbedFieldBuilder().WithName("Frames sent:").WithValue(_stats.Frames.Sent).WithIsInline(true),
+                };
+
+            var em = new EmbedBuilder()
+                .WithTitle("Lavalink Stats")
+                .WithCurrentTimestamp()
+                .WithFields(statsFields);
+            return em;
+        }
+
+        public async Task PlayAsync(ShardedCommandContext context, Song s)
         {
             var player = _manager.GetPlayer(context.Guild.Id);
-            if (player != null && player.Playing) return false;
+            if (player != null && player.IsPlaying) return;
 
             var voiceChannel = (context.User as SocketGuildUser).VoiceChannel;
 
-            if (voiceChannel == null) return false;
-            else
+            if (voiceChannel == null) return;
+            await voiceChannel.ConnectAsync(false, false, true); // prevents issues when playing later
+            await voiceChannel.DisconnectAsync();
+
+            player = null; // cheap hack but ok
+            player = await _manager.ConnectAsync(voiceChannel, (ITextChannel)context.Channel);
+
+            var tracks = (await _lavaRestClient.SearchTracksAsync(s.URL)).Tracks.Where(x => x.Uri != null);
+            if (!tracks.Any())
             {
-                await voiceChannel.ConnectAsync(false, false, true);
-                await voiceChannel.DisconnectAsync();
-                player = null; // cheap hack to make a new player
+                await context.Channel.SendMessageAsync("I was unable to grab a track for the requested song.");
+                return;
             }
-
-            if (player == null && context.Guild.CurrentUser.VoiceChannel != null)
-                await context.Guild.CurrentUser.VoiceChannel.DisconnectAsync();
-
-            player = await _manager.JoinAsync(voiceChannel);
-
-            var tracks = await _manager.GetTracksAsync(s.URL);
-            var track = tracks.Tracks.Where(x => x.Url != null).FirstOrDefault();
+            var track = tracks.First();
 
             await context.Channel.SendMessageAsync(embed: GenerateNowPlaying(s).Build());
 
-            await player.SetVolumeAsync(100);
-
-            var timeout = Task.Delay(track.Length);
-
-            var p = new TaskCompletionSource<bool>();
-            Task TrackFinish(LavalinkPlayer _, LavalinkTrack __, string ___)
-            {
-                p.SetResult(true);
-                return Task.CompletedTask;
-            }
-            _manager.TrackEnd += TrackFinish;
             await player.PlayAsync(track);
-            var t = await Task.WhenAny(p.Task, timeout);
-            _manager.TrackEnd -= TrackFinish;
+            await player.SetVolumeAsync(100);
+        }
+        public async Task PlayAsync(ulong guildId, Song s)
+        {
+            var player = _manager.GetPlayer(guildId);
 
-            if (t == timeout)
+            var tracks = (await _lavaRestClient.SearchTracksAsync(s.URL)).Tracks.Where(x => x.Uri != null);
+            if (!tracks.Any())
             {
-                Console.WriteLine($"Failed to finish playing track {track.Url}");
-                return false;
+                await player.TextChannel.SendMessageAsync("I was unable to grab a track for the requested song.");
+                return;
             }
-            else
-            {
-                Console.WriteLine($"Finished playing track {track.Url}");
-                return true;
-            }
+            var track = tracks.First();
+
+            await player.TextChannel.SendMessageAsync(embed: GenerateNowPlaying(s).Build());
+
+            await player.PlayAsync(track);
+            await player.SetVolumeAsync(100);
         }
 
         public async Task SkipAsync(ShardedCommandContext context)
         {
             var player = _manager.GetPlayer(context.Guild.Id);
-            if (player == null || !player.Playing) return;
+            if (player == null || !player.IsPlaying) return;
 
             if (!player.CurrentTrack.IsSeekable)
             {
@@ -195,12 +217,20 @@ namespace OscarBot.Services
                 return;
             }
 
-            Dequeue(context);
-            var song = queue.First();
-            await PlayAsync(context, song);
+            var s = Dequeue(context);
+            TimeSpan.TryParse(s.Length, out var ts);
+            await player.SeekAsync(ts);
         }
 
-        public EmbedBuilder GenerateNowPlaying(Song song)
+        public async Task EqualizeAsync(ShardedCommandContext context, List<EqualizerBand> bands)
+        {
+            var player = _manager.GetPlayer(context.Guild.Id);
+            if (player == null || !player.IsPlaying) return;
+
+            await player.EqualizerAsync(bands);
+        }
+
+        private EmbedBuilder GenerateNowPlaying(Song song)
         {
             var songFields = new List<EmbedFieldBuilder>()
             {
@@ -221,7 +251,7 @@ namespace OscarBot.Services
             return nowPlaying;
         }
 
-        public EmbedBuilder GenerateAddedMsg(Song s)
+        private EmbedBuilder GenerateAddedMsg(Song s)
         {
             var fields = new List<EmbedFieldBuilder>()
             {
@@ -238,6 +268,43 @@ namespace OscarBot.Services
                 .WithFields(fields)
                 .WithCurrentTimestamp();
             return songEmbed;
+        }
+
+        private Task RefreshStats(ServerStats stats)
+        {
+            _stats = stats;
+            return Task.CompletedTask;
+        }
+
+        private async Task TrackEnd(LavaPlayer player, LavaTrack oldTrack, TrackEndReason reason)
+        {
+            if (!reason.ShouldPlayNext()) return;
+
+            var guildId = player.VoiceChannel.GuildId;
+            var queue = GetQueue(guildId);
+            var cId = GetChannelId(guildId);
+
+            var msgChannel = player.VoiceChannel.Guild.GetChannelAsync(cId) as ISocketMessageChannel;
+
+            if (queue.Count == 0)
+            {
+                await msgChannel.SendMessageAsync("The last song in my queue has finished...");
+                await _manager.DisconnectAsync(player.VoiceChannel);
+                return;
+            }
+            var users = (player.VoiceChannel as SocketVoiceChannel).Users;
+
+            if (users.Count == 1 && users.Any(x => x.Id == _client.CurrentUser.Id))
+            {
+                await msgChannel.SendMessageAsync("There are no users in my voice channel...");
+                await _manager.DisconnectAsync(player.VoiceChannel);
+                return;
+            }
+
+            Dequeue(guildId);
+            if (!queue.Any()) return;
+
+            await PlayAsync(player.VoiceChannel.GuildId, queue.First());
         }
     }
 }

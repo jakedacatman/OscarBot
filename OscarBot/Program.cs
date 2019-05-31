@@ -10,8 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Discord.Addons.Interactive;
 using System.Reflection;
 using System.IO;
-using SharpLink;
-using SharpLink.Stats;
+using Victoria;
 using OscarBot.Classes;
 using OscarBot.Services;
 using OscarBot.TypeReaders;
@@ -23,7 +22,9 @@ namespace OscarBot
         private DiscordShardedClient _client;
         private CommandService _commands;
         private IServiceProvider _services;
-        private LavalinkManager _manager;
+        private LavaShardClient _manager;
+        private LavaRestClient _lavaRestClient;
+        private readonly Configuration lavaConfig = new Configuration { AutoDisconnect = true, InactivityTimeout = TimeSpan.FromSeconds(30), PreservePlayers = true, LogSeverity = LogSeverity.Verbose, ReconnectAttempts = 20, ReconnectInterval = TimeSpan.FromSeconds(3) };
 
         public static void Main(string[] args) => new Program().Start().GetAwaiter().GetResult();
 
@@ -35,6 +36,7 @@ namespace OscarBot
                 AlwaysDownloadUsers = false,
                 ConnectionTimeout = int.MaxValue,
                 TotalShards = 4,
+                DefaultRetryMode = RetryMode.AlwaysRetry,
                 MessageCacheSize = 1024,
                 ExclusiveBulkDelete = true
             });
@@ -48,21 +50,15 @@ namespace OscarBot
                 IgnoreExtraArgs = false
             });
 
-            _manager = new LavalinkManager(_client, new LavalinkManagerConfig
-            {
-                RESTHost = "localhost",
-                RESTPort = 2333,
-                WebSocketHost = "localhost",
-                WebSocketPort = 2333,
-                Authorization = "youshallnotpass",
-                TotalShards = 4,
-                LogSeverity = LogSeverity.Info
-            });
+            _manager = new LavaShardClient();
+
+            _lavaRestClient = new LavaRestClient(lavaConfig);
 
             _services = new ServiceCollection()
                 .AddSingleton(_client)
                 .AddSingleton(_commands)
                 .AddSingleton(_manager)
+                .AddSingleton(_lavaRestClient)
                 .AddSingleton<DbService>()
                 .AddSingleton<ModerationService>()
                 .AddSingleton<MiscService>()
@@ -90,7 +86,7 @@ namespace OscarBot
             {
                 if (counter >= _client.Shards.Count)
                 {
-                    await _manager.StartAsync();
+                    await _manager.StartAsync(_client, lavaConfig);
                     await _client.SetActivityAsync(new Game($"over {counter} out of {_client.Shards.Count} shards", ActivityType.Watching));
                 }   
                 counter++;

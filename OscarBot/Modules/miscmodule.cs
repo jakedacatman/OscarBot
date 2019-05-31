@@ -14,7 +14,7 @@ using System.Net;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
-using Microsoft.CodeAnalysis.Diagnostics;
+using Victoria;
 using Microsoft.CodeAnalysis.Scripting;
 using Discord.Addons.Interactive;
 using System.Diagnostics;
@@ -30,11 +30,16 @@ namespace OscarBot.Modules
         private readonly MiscService _misc;
         private readonly DbService _db;
 
-        public MiscModule(DiscordShardedClient client, MiscService misc, DbService db)
+        private readonly LavaShardClient _manager;
+        private readonly LavaRestClient _lavaRestClient;
+
+        public MiscModule(DiscordShardedClient client, MiscService misc, DbService db, LavaShardClient manager, LavaRestClient lavaRestClient)
         {
             _client = client;
             _misc = misc;
             _db = db;
+            _manager = manager;
+            _lavaRestClient = lavaRestClient;
         }
 
         [Command("eval")]
@@ -70,8 +75,10 @@ namespace OscarBot.Modules
                     User = Context.User as SocketGuildUser,
                     Message = Context.Message,
                     Console = new FakeConsole(sb),
-                    _db = _db
-                };
+                    _db = _db,
+                    _lavaRestClient = _lavaRestClient,
+                    _manager = _manager
+                 };
                 var options = ScriptOptions.Default
                     .AddReferences(assemblies)
                     .AddImports(globals.Imports);

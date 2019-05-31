@@ -164,10 +164,6 @@
     <Reference Include="Remotion.Linq, Version=2.2.0.0, Culture=neutral, PublicKeyToken=fee00910d6e5f53b, processorArchitecture=MSIL">
       <HintPath>..\packages\Remotion.Linq.2.2.0\lib\net45\Remotion.Linq.dll</HintPath>
     </Reference>
-    <Reference Include="SharpLink, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>Dlls\SharpLink.dll</HintPath>
-    </Reference>
     <Reference Include="SQLitePCLRaw.batteries_green, Version=1.1.13.388, Culture=neutral, PublicKeyToken=a84b7dcfb1391f7f, processorArchitecture=MSIL">
       <HintPath>..\packages\SQLitePCLRaw.bundle_green.1.1.13\lib\net45\SQLitePCLRaw.batteries_green.dll</HintPath>
     </Reference>
@@ -384,6 +380,9 @@
       <HintPath>..\packages\System.Xml.XPath.XDocument.4.3.0\lib\net46\System.Xml.XPath.XDocument.dll</HintPath>
       <Private>True</Private>
       <Private>True</Private>
+    </Reference>
+    <Reference Include="Victoria, Version=4.0.10.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Victoria.4.0.10\lib\netstandard2.0\Victoria.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>

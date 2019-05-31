@@ -8,8 +8,8 @@ using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 using Discord.Addons.Interactive;
-using SharpLink;
-using SharpLink.Stats;
+using Victoria;
+using Victoria.Entities;
 using Google.Apis.Services;
 using Google.Apis.YouTube.v3;
 using System.Net;
@@ -24,16 +24,15 @@ namespace OscarBot.Modules
     [Name("Music")]
     public class MusicModule : InteractiveBase<ShardedCommandContext>
     {
-        private readonly LavalinkManager _manager;
+        private readonly LavaShardClient _manager;
         private readonly DiscordShardedClient _client;
         private readonly MiscService _misc;
         private readonly MusicService _ms;
         private readonly DbService _db;
         private readonly IServiceProvider _services;
-        private LavalinkStats _stats;
 
 
-        public MusicModule(LavalinkManager manager, DiscordShardedClient client, MiscService misc, MusicService ms, DbService db, IServiceProvider services)
+        public MusicModule(LavaShardClient manager, DiscordShardedClient client, MiscService misc, MusicService ms, DbService db, IServiceProvider services)
         {
             _manager = manager;
             _client = client;
@@ -41,8 +40,6 @@ namespace OscarBot.Modules
             _ms = ms;
             _db = db;
             _services = services;
-            _manager.TrackEnd += TrackEnd;
-            _manager.Stats += RefreshStats;
         }
 
         [Command("add")]
@@ -166,8 +163,8 @@ namespace OscarBot.Modules
         {
             try
             {
-                LavalinkPlayer player = _manager.GetPlayer(Context.Guild.Id);
-                if (player == null || player.Playing == false)
+                LavaPlayer player = _manager.GetPlayer(Context.Guild.Id);
+                if (player == null || player.IsPlaying == false)
                 {
                     await ReplyAsync("No track is playing.");
                     return;
@@ -189,10 +186,10 @@ namespace OscarBot.Modules
         {
             try
             {
-                LavalinkPlayer player = _manager.GetPlayer(Context.Guild.Id);
+                LavaPlayer player = _manager.GetPlayer(Context.Guild.Id);
                 var s = _ms.GetQueue(Context).First();
 
-                if (player == null || player.Playing == false)
+                if (player == null || player.IsPlaying == false)
                 {
                     await ReplyAsync("No track is playing.");
                     return;
@@ -204,7 +201,7 @@ namespace OscarBot.Modules
                     return;
                 }
 
-                var currPos = TimeSpan.FromMilliseconds(player.CurrentPosition);
+                var currPos = player.CurrentTrack.Position;
                 var len = player.CurrentTrack.Length;
 
                 var totalLen = 40;
@@ -250,7 +247,7 @@ namespace OscarBot.Modules
                     int i = 1;
                     foreach (Song s in queue)
                     {
-                        if (i == 1 && _manager.GetPlayer(Context.Guild.Id) != null && _manager.GetPlayer(Context.Guild.Id).Playing)
+                        if (i == 1 && _manager.GetPlayer(Context.Guild.Id) != null && _manager.GetPlayer(Context.Guild.Id).IsPlaying)
                         {
                             titles.Add($"{i}. **{s.Name}** (queued by <@{s.QueuerId}>) -- currently playing");
                         }
@@ -300,7 +297,7 @@ namespace OscarBot.Modules
         [Command("volume")]
         [Alias("setvolume", "vol")]
         [Summary("Sets the volume to a certain percentage.")]
-        public async Task VolumeCmd([Summary("The percentage to set the volume to.")]uint volume)
+        public async Task VolumeCmd([Summary("The percentage to set the volume to.")]int volume)
         {
             try
             {
@@ -308,15 +305,74 @@ namespace OscarBot.Modules
                 var user = Context.User;
                 var song = _ms.GetQueue(Context).First();
 
-                if (player == null || !player.Playing) return;
+                if (player == null || !player.IsPlaying) return;
+                if (user.IsQueuer(song) || (user as SocketGuildUser).GuildPermissions.DeafenMembers)
+                {
+                    if (volume < 0 || volume > 150) volume = 100;
+
+                    await player.SetVolumeAsync(volume);
+
+                    await ReplyAsync($"Set volume to **{volume}%**!");
+                }
+            }
+            catch (Exception e)
+            {
+                await ReplyAsync(embed: _misc.GenerateErrorMessage(e).Build());
+            }
+        }
+
+        [Command("bass")]
+        [Alias("bassboost")]
+        [Summary("Boosts the bass of the currently playing track.")]
+        public async Task BassBoostCmd([Summary("The multiplier on the base.")]double bass)
+        {
+            try
+            {
+                var user = Context.User;
+                var song = _ms.GetQueue(Context).First();
+
+                if (user.IsQueuer(song) || (user as SocketGuildUser).GuildPermissions.DeafenMembers)
+                {
+                    if (bass < 0 || bass > 8) bass = 2;
+
+                    List<EqualizerBand> eBands = new List<EqualizerBand>
+                {
+                    new EqualizerBand { Band = 0, Gain = bass / 8d },
+                    new EqualizerBand { Band = 1, Gain = bass / 8d },
+                    new EqualizerBand { Band = 2, Gain = bass / 8d }
+                };
+
+                    for (int i = 2; i < 15; i++)
+                        eBands.Add(new EqualizerBand { Band = (ushort)i, Gain = 0 });
+
+                    await _ms.EqualizeAsync(Context, eBands);
+
+                    await ReplyAsync($"Set bass to **{bass}x**!");
+                }
+            }
+            catch (Exception e)
+            {
+                await ReplyAsync(embed: _misc.GenerateErrorMessage(e).Build());
+            }
+        }
+
+        [Command("reset")]
+        [Summary("Resets the equalizer on the currently playing track.")]
+        public async Task ResetCmd()
+        {
+            try
+            {
+                var user = Context.User;
+                var song = _ms.GetQueue(Context).First();
+
                 if (!(user as SocketGuildUser).GuildPermissions.DeafenMembers || !user.IsQueuer(song)) return;
-                if (volume < 0u || volume > 150u) volume = 100u;
 
-                await player.SetVolumeAsync(volume);
+                List<EqualizerBand> eBands = new List<EqualizerBand>();
 
-                await ReplyAsync($"Set volume to **{volume}%**!");
+                for (int i = 0; i < 15; i++)
+                    eBands.Add(new EqualizerBand { Band = (ushort)i, Gain = 0 });
 
-                if (!player.Playing) await player.DisconnectAsync();
+                await _ms.EqualizeAsync(Context, eBands);
             }
             catch (Exception e)
             {
@@ -373,69 +429,12 @@ namespace OscarBot.Modules
         {
             try
             {
-                if (_stats == null)
-                {
-                    await ReplyAsync("No stats have been received yet.");
-                    return;
-                }
-                var statsFields = new List<EmbedFieldBuilder>()
-                {
-                    new EmbedFieldBuilder().WithName("CPU:").WithValue(_stats.CPU.LavalinkLoad).WithIsInline(true),
-                    new EmbedFieldBuilder().WithName("Percentage used of allocated memory:").WithValue(Math.Round(_stats.Memory.Used / (double)_stats.Memory.Allocated)).WithIsInline(true),
-                    new EmbedFieldBuilder().WithName("Players:").WithValue($"{_stats.Players} ({_stats.PlayingPlayers} playing)").WithIsInline(true),
-                    new EmbedFieldBuilder().WithName("Uptime:").WithValue($"{TimeSpan.FromMilliseconds(_stats.Uptime):g}").WithIsInline(true),
-                    new EmbedFieldBuilder().WithName("Frames sent:").WithValue(_stats.FrameStats.Sent).WithIsInline(true),
-                };
-
-                var em = new EmbedBuilder()
-                    .WithTitle("Lavalink Stats")
-                    .WithCurrentTimestamp()
-                    .WithFields(statsFields);
-
-                await ReplyAsync(embed: em.Build());
+                await ReplyAsync(embed: _ms.GetStats().Build());
             }
             catch (Exception e)
             {
                 await ReplyAsync(embed: _misc.GenerateErrorMessage(e).Build());
             }
-        }
-
-        private Task RefreshStats(LavalinkStats stats)
-        {
-            _stats = stats;
-            return Task.CompletedTask;
-        }
-
-        private async Task TrackEnd(LavalinkPlayer player, LavalinkTrack oldTrack, string reason)
-        {
-            if (reason == "REPLACED") return;
-
-            var guildId = player.VoiceChannel.GuildId;
-            var queue = _ms.GetQueue(guildId);
-            var cId = _ms.GetChannelId(guildId);
-
-            var msgChannel = player.VoiceChannel.Guild.GetChannelAsync(cId) as ISocketMessageChannel;
-
-            if (queue.Count == 0)
-            {
-                await msgChannel.SendMessageAsync("The last song in my queue has finished...");
-                await player.DisconnectAsync();
-                return;
-            }
-            var users = (player.VoiceChannel as SocketVoiceChannel).Users;
-
-            if (users.Count == 1 && users.Any(x => x.Id == Context.Client.CurrentUser.Id))
-            {
-                await msgChannel.SendMessageAsync("There are no users in my voice channel...");
-                await player.DisconnectAsync();
-                return;
-            }
-
-            _ms.Dequeue(guildId);
-            queue = _ms.GetQueue(guildId);
-            if (queue.Count == 0) return;
-
-            await _ms.PlayAsync(Context, queue.First());
         }
     }
     
