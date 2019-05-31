@@ -324,7 +324,7 @@ namespace OscarBot.Modules
         [Command("bass")]
         [Alias("bassboost")]
         [Summary("Boosts the bass of the currently playing track.")]
-        public async Task BassBoostCmd([Summary("The multiplier on the base.")]double bass)
+        public async Task BassBoostCmd([Summary("The multiplier on the bass.")]double bass)
         {
             try
             {
