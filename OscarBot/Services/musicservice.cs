@@ -142,12 +142,8 @@ namespace OscarBot.Services
             if (player != null && player.IsPlaying) return;
 
             var voiceChannel = (context.User as SocketGuildUser).VoiceChannel;
-
             if (voiceChannel == null) return;
-            await voiceChannel.ConnectAsync(false, false, true); // prevents issues when playing later
-            await voiceChannel.DisconnectAsync();
 
-            player = null; // cheap hack but ok
             player = await _manager.ConnectAsync(voiceChannel, (ITextChannel)context.Channel);
 
             var tracks = (await _lavaRestClient.SearchTracksAsync(s.URL)).Tracks.Where(x => x.Uri != null);
@@ -171,6 +167,7 @@ namespace OscarBot.Services
             if (!tracks.Any())
             {
                 await player.TextChannel.SendMessageAsync("I was unable to grab a track for the requested song.");
+                await _manager.DisconnectAsync(player.VoiceChannel);
                 return;
             }
             var track = tracks.First();
@@ -217,8 +214,7 @@ namespace OscarBot.Services
                 return;
             }
 
-            var s = Dequeue(context);
-            TimeSpan.TryParse(s.Length, out var ts);
+            TimeSpan.TryParse(currPlaying.Length, out var ts);
             await player.SeekAsync(ts.Subtract(TimeSpan.FromSeconds(1)));
         }
 
