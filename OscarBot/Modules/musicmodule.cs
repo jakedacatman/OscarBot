@@ -261,7 +261,7 @@ namespace OscarBot.Modules
                         .WithColor(_misc.RandomColor())
                         .WithDescription(string.Join("\n", titles))
                         .WithCurrentTimestamp()
-                        .WithFooter("Powered by Lavalink and SharpLink")
+                        .WithFooter("Powered by Lavalink and Victoria")
                         .WithTitle("My queue");
                     await ReplyAsync("", false, em.Build());
                 }
