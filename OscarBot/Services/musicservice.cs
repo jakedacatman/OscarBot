@@ -205,7 +205,7 @@ namespace OscarBot.Services
                 RemoveAllSkips(context);
                 await context.Channel.SendMessageAsync("Skipped the current track.");
             }
-            else if (users.Count >= (player.VoiceChannel as SocketVoiceChannel).Users.Count / 3d)
+            else if (users.Count >= ((player.VoiceChannel as SocketVoiceChannel).Users.Count - 1) / 3d)
             {
                 RemoveAllSkips(context);
                 await context.Channel.SendMessageAsync("Skipped the current track.");
@@ -373,6 +373,12 @@ namespace OscarBot.Services
             }
 
             await PlayAsync(player.VoiceChannel.GuildId, queue.First());
+            await player.SetVolumeAsync(100);
+            List<EqualizerBand> eBands = new List<EqualizerBand>();
+            for (int i = 0; i < 15; i++)
+                eBands.Add(new EqualizerBand { Band = (ushort)i, Gain = 0 });
+
+            await player.EqualizerAsync(eBands);
         }
     }
 }

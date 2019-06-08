@@ -308,7 +308,7 @@ namespace OscarBot.Modules
                 if (player == null || !player.IsPlaying) return;
                 if (user.IsQueuer(song) || (user as SocketGuildUser).GuildPermissions.DeafenMembers)
                 {
-                    if (volume < 0 || volume > 150) volume = 100;
+                    if (volume < 0 || volume > 1000) volume = 100;
 
                     await player.SetVolumeAsync(volume);
 
@@ -350,11 +350,11 @@ namespace OscarBot.Modules
                     if (bass < 0 || bass > 8) bass = 2;
 
                     List<EqualizerBand> eBands = new List<EqualizerBand>
-                {
-                    new EqualizerBand { Band = 0, Gain = bass / 8d },
-                    new EqualizerBand { Band = 1, Gain = bass / 8d },
-                    new EqualizerBand { Band = 2, Gain = bass / 8d }
-                };
+                    {
+                        new EqualizerBand { Band = 0, Gain = bass / 8d },
+                        new EqualizerBand { Band = 1, Gain = bass / 8d },
+                        new EqualizerBand { Band = 2, Gain = bass / 8d }
+                    };
 
                     for (int i = 2; i < 15; i++)
                         eBands.Add(new EqualizerBand { Band = (ushort)i, Gain = 0 });
