@@ -219,7 +219,27 @@ namespace OscarBot.Services
 
             var s = Dequeue(context);
             TimeSpan.TryParse(s.Length, out var ts);
-            await player.SeekAsync(ts);
+            await player.SeekAsync(ts.Subtract(TimeSpan.FromSeconds(1)));
+        }
+
+        public async Task<bool> GetLyricsAsync(ShardedCommandContext context)
+        {
+            var player = _manager.GetPlayer(context.Guild.Id);
+            if (player == null || !player.IsPlaying)
+            {
+                await context.Channel.SendMessageAsync("There is no song playing at the moment.");
+                return false;
+            }
+
+            var lyrics = await player.CurrentTrack.FetchLyricsAsync();
+            if (string.IsNullOrEmpty(lyrics))
+            {
+                await context.Channel.SendMessageAsync("I was unable to find any lyrics for the currently playing song.");
+                return false;
+            }
+
+            await context.Channel.SendMessageAsync(lyrics);
+            return true;
         }
 
         public async Task EqualizeAsync(ShardedCommandContext context, List<EqualizerBand> bands)

@@ -321,6 +321,20 @@ namespace OscarBot.Modules
             }
         }
 
+        [Command("lyrics")]
+        [Summary("Gets the lyrics to the currently playing track.")]
+        public async Task LyricsCmd()
+        {
+            try
+            {
+                await _ms.GetLyricsAsync(Context);
+            }
+            catch (Exception e)
+            {
+                await ReplyAsync(embed: _misc.GenerateErrorMessage(e).Build());
+            }
+        }
+
         [Command("bass")]
         [Alias("bassboost")]
         [Summary("Boosts the bass of the currently playing track.")]
@@ -395,7 +409,7 @@ namespace OscarBot.Modules
         }
 
         [Command("skips")]
-        [Summary("Displays the amount of skips the currently-playing track has.")]
+        [Summary("Displays the amount of skips the currently playing track has.")]
         public async Task SkipsCmd()
         {
             try
