@@ -205,7 +205,7 @@ namespace OscarBot.Services
             yield return typeof(ILookup<string, string>).GetTypeInfo().Assembly;
         }
 
-        private async Task<string> UploadToBisogaAsync(string stuffToUpload)
+        public async Task<string> UploadToBisogaAsync(string stuffToUpload)
         {
             using (WebClient cl = new WebClient())
             {

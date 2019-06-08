@@ -11,6 +11,7 @@ using Discord.Addons.Interactive;
 using System.Diagnostics;
 using OscarBot.Services;
 using System.Net.Http;
+using Victoria;
 
 namespace OscarBot.Modules
 {
@@ -20,14 +21,16 @@ namespace OscarBot.Modules
         private readonly DiscordShardedClient _client;
         private readonly CommandService _commands;
         private readonly MiscService _misc;
+        private readonly LavaShardClient _lavaClient;
 
         private const int timeout = 10000; // 10 seconds
 
-        public VitalsModule(DiscordShardedClient client, CommandService commands, MiscService misc)
+        public VitalsModule(DiscordShardedClient client, CommandService commands, MiscService misc, LavaShardClient lavaClient)
         {
             _client = client;
             _commands = commands;
             _misc = misc;
+            _lavaClient = lavaClient;
         }
 
         [Command("ping")]
@@ -42,7 +45,7 @@ namespace OscarBot.Modules
                 var lat = s.ElapsedTicks;
                 s.Restart();
                 using (var h = new HttpClient())
-                    await h.GetAsync("https://discordapp.com/api", new CancellationTokenSource(timeout).Token);
+                    await h.GetAsync("https://status.discordapp.com/", new CancellationTokenSource(timeout).Token);
                 s.Stop();
 
 
@@ -168,6 +171,24 @@ namespace OscarBot.Modules
                     await ReplyAsync("This command does not exist.");
                     return;
                 }
+            }
+            catch (Exception e)
+            {
+                await ReplyAsync(embed: _misc.GenerateErrorMessage(e).Build());
+            }
+        }
+        [Command("logout")]
+        [RequireOwner]
+        public async Task LogoutCmd()
+        {
+            try
+            {
+                await ReplyAsync("Logging out in 10 seconds.");
+                await Task.Delay(10000);
+                await _lavaClient.DisposeAsync();
+                await _client.LogoutAsync();
+                _client.Dispose();
+                Environment.Exit(0);
             }
             catch (Exception e)
             {

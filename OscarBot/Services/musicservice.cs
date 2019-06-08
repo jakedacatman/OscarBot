@@ -9,7 +9,9 @@ using Discord.WebSocket;
 using Discord;
 using Victoria;
 using Victoria.Entities;
-
+using System.Net;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace OscarBot.Services
 {
@@ -218,24 +220,69 @@ namespace OscarBot.Services
             await player.SeekAsync(ts.Subtract(TimeSpan.FromSeconds(1)));
         }
 
-        public async Task<bool> GetLyricsAsync(ShardedCommandContext context)
+        private async Task<string> GetLyricsForTrack(LavaTrack track)
         {
-            var player = _manager.GetPlayer(context.Guild.Id);
-            if (player == null || !player.IsPlaying)
+            string author;
+            string trackTitle;
+            var split = track.Title.Split('-');
+            if (split.Length == 1)
             {
-                await context.Channel.SendMessageAsync("There is no song playing at the moment.");
-                return false;
+                author = track.Author;
+                trackTitle = split[0];
+            }
+            else
+            {
+                author = split[0].Substring(0, split[0].Length - 1);
+                trackTitle = split[1].Substring(1);
             }
 
-            var lyrics = await player.CurrentTrack.FetchLyricsAsync();
-            if (string.IsNullOrEmpty(lyrics))
+            using (var cl = new WebClient())
+            {
+                var result = JsonConvert.DeserializeObject<JObject>(await cl.DownloadStringTaskAsync(Uri.EscapeUriString($"https://api.lyrics.ovh/v1/{author}/{trackTitle}")));
+                return result.SelectToken("lyrics") != null ? result.SelectToken("lyrics").Value<string>() : string.Empty;
+            }
+        }
+
+        public async Task<bool> GetLyricsAsync(ShardedCommandContext context)
+        {
+            try
+            {
+                var player = _manager.GetPlayer(context.Guild.Id);
+                if (player == null || !player.IsPlaying)
+                {
+                    await context.Channel.SendMessageAsync("There is no song playing at the moment.");
+                    return false;
+                }
+
+                var cTrack = player.CurrentTrack;
+
+                var lyrics = await GetLyricsForTrack(cTrack);
+                if (string.IsNullOrEmpty(lyrics))
+                {
+                    await context.Channel.SendMessageAsync("I was unable to find any lyrics for the currently playing song.");
+                    return false;
+                }
+
+                var em = new EmbedBuilder()
+                    .WithColor(_misc.RandomColor())
+                    .WithTitle($"Lyrics for {cTrack.Title}")
+                    .WithThumbnailUrl(await cTrack.FetchThumbnailAsync())
+                    .WithCurrentTimestamp();
+
+                if (lyrics.Length > 1000)
+                    em = em.WithUrl(await _misc.UploadToBisogaAsync(lyrics));
+                else
+                    em = em.WithDescription(lyrics);
+
+                await context.Channel.SendMessageAsync(embed: em.Build());
+
+                return true;
+            }
+            catch
             {
                 await context.Channel.SendMessageAsync("I was unable to find any lyrics for the currently playing song.");
                 return false;
             }
-
-            await context.Channel.SendMessageAsync(lyrics);
-            return true;
         }
 
         public async Task EqualizeAsync(ShardedCommandContext context, List<EqualizerBand> bands)
@@ -295,12 +342,13 @@ namespace OscarBot.Services
         private async Task TrackEnd(LavaPlayer player, LavaTrack oldTrack, TrackEndReason reason)
         {
             if (!reason.ShouldPlayNext()) return;
-
-            var guildId = player.VoiceChannel.GuildId;
+            
+            var vChannel = player.VoiceChannel;
+            var guildId = vChannel.GuildId;
             var queue = GetQueue(guildId);
             var cId = GetChannelId(guildId);
 
-            var msgChannel = player.VoiceChannel.Guild.GetChannelAsync(cId) as ISocketMessageChannel;
+            var msgChannel = vChannel.Guild.GetChannelAsync(cId) as ISocketMessageChannel;
 
             if (queue.Count == 0)
             {
@@ -308,7 +356,7 @@ namespace OscarBot.Services
                 await _manager.DisconnectAsync(player.VoiceChannel);
                 return;
             }
-            var users = (player.VoiceChannel as SocketVoiceChannel).Users;
+            var users = (vChannel as SocketVoiceChannel).Users;
 
             if (users.Count == 1 && users.Any(x => x.Id == _client.CurrentUser.Id))
             {
@@ -318,7 +366,11 @@ namespace OscarBot.Services
             }
 
             Dequeue(guildId);
-            if (!queue.Any()) return;
+            if (!queue.Any())
+            {
+                await _manager.DisconnectAsync(vChannel);
+                return;
+            }
 
             await PlayAsync(player.VoiceChannel.GuildId, queue.First());
         }
