@@ -349,19 +349,45 @@ namespace OscarBot.Modules
                 {
                     if (bass < 0 || bass > 8) bass = 2;
 
-                    List<EqualizerBand> eBands = new List<EqualizerBand>
-                    {
-                        new EqualizerBand { Band = 0, Gain = bass / 8d },
-                        new EqualizerBand { Band = 1, Gain = bass / 8d },
-                        new EqualizerBand { Band = 2, Gain = bass / 8d }
-                    };
-
-                    for (int i = 2; i < 15; i++)
+                    List<EqualizerBand> eBands = new List<EqualizerBand>();
+                    for (int i = 0; i < 5; i++)
+                        eBands.Add(new EqualizerBand { Band = (ushort)i, Gain = bass / 8d });
+                    for (int i = 5; i < 15; i++)
                         eBands.Add(new EqualizerBand { Band = (ushort)i, Gain = 0 });
 
                     await _ms.EqualizeAsync(Context, eBands);
 
                     await ReplyAsync($"Set bass to **{bass}x**!");
+                }
+            }
+            catch (Exception e)
+            {
+                await ReplyAsync(embed: _misc.GenerateErrorMessage(e).Build());
+            }
+        }
+        [Command("treble")]
+        [Alias("trebleboost")]
+        [Summary("Boosts the treble of the currently playing track.")]
+        public async Task TrebleBoostCmd([Summary("The multiplier on the treble.")]double treble)
+        {
+            try
+            {
+                var user = Context.User;
+                var song = _ms.GetQueue(Context).First();
+
+                if (user.IsQueuer(song) || (user as SocketGuildUser).GuildPermissions.DeafenMembers)
+                {
+                    if (treble < 0 || treble > 8) treble = 2;
+
+                    List<EqualizerBand> eBands = new List<EqualizerBand>();
+                    for (int i = 0; i < 10; i++)
+                        eBands.Add(new EqualizerBand { Band = (ushort)i, Gain = 0 });
+                    for (int i = 10; i < 15; i++)
+                        eBands.Add(new EqualizerBand { Band = (ushort)i, Gain = treble / 8d });
+
+                    await _ms.EqualizeAsync(Context, eBands);
+
+                    await ReplyAsync($"Set treble to **{treble}x**!");
                 }
             }
             catch (Exception e)
