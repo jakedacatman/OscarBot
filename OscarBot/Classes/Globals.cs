@@ -17,6 +17,7 @@ namespace OscarBot.Classes
         public CommandService Commands { get; internal set; }
         public IServiceProvider Services { get; internal set; }
         public DbService _db { get; internal set; }
+        public MiscService _misc { get; internal set; }
         public FakeConsole Console { get; internal set; }
         public Random Random { get; internal set; } = new Random();
         public LavaShardClient _manager { get; internal set; }
@@ -24,6 +25,7 @@ namespace OscarBot.Classes
         public string[] Imports { get; internal set; } = new string[]
         {
             "System",
+            "System.Collections",
             "System.Collections.Generic",
             "System.Linq",
             "System.Text",

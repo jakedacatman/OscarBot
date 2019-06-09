@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -100,6 +101,7 @@ namespace OscarBot.Services
                 Message = context.Message,
                 Console = new FakeConsole(sb),
                 _db = _db,
+                _misc = this,
                 _lavaRestClient = _lavaRestClient,
                 _manager = _manager
             };
@@ -145,15 +147,18 @@ namespace OscarBot.Services
                 await msg.DeleteAsync();
                 return await GenerateErrorAsync(code, eval.Exception);
             }
-            string description;
-            if (result == null || (result.ToString().Length == 0 && sb.Length > 0))
-                description = $"in: ```cs\n{code}```\nConsole: \n```\n{sb}\n```";
-            else if (sb.Length > 0)
-                description = $"in: ```cs\n{code}```\nout: \n```{result}```\n Console: \n ```\n{sb}\n```";
-            else if (string.IsNullOrEmpty(result.ToString()))
-                description = $"in: ```cs\n{code}```\nout: \n```\n```";
+
+            string description = $"in: ```cs\n{code}```\nout: \n```";
+
+            if (result is ICollection r)
+                description += $"{r.MakeString()}```";
+            else if (result == null || string.IsNullOrEmpty(result.ToString()))
+                description += $" ```";
             else
-                description = $"in: ```cs\n{code}```\nout: \n```{result}```";
+                description += $"{result}```";
+
+            if (sb.ToString().Length > 0)
+                description += $"\nConsole: \n```\n{sb}\n```";
 
             var em = new EmbedBuilder()
                     .WithFooter($"Return type: {(result == null ? "null" : result.GetType().ToString())} • took {s.ElapsedTicks / 10000d} ms to compile and {c.ElapsedTicks / 10000d} ms to execute")

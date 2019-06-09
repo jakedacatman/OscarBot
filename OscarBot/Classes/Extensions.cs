@@ -1,15 +1,36 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Concurrent;
+using System.Text;
 using Discord;
+using System.Linq;
+
 namespace OscarBot.Classes
 {
 
     public static class IEnumerableExtensions
     {
-        public static string ToString<T>(this IEnumerable<T> t, string separator)
+        public static string MakeString(this IEnumerable t)
         {
-            return string.Join(separator, t);
+            if (t == null || !t.Cast<object>().Any())
+                return "[\n]";
+
+            StringBuilder sb = new StringBuilder();
+            foreach (var thing in t)
+            {
+                var toAppend = "  ";
+
+                if (thing is ICollection h)
+                    toAppend += h.MakeString();
+                else
+                    toAppend += thing.ToString();
+
+                toAppend += ",\n";
+
+                sb.Append(toAppend);
+            }
+            var str = sb.ToString();
+            return $"[\n{str.Substring(0, str.Length - 2)}\n]";
         }
     }
 

@@ -35,7 +35,7 @@ namespace OscarBot
                 LogLevel = LogSeverity.Verbose,
                 AlwaysDownloadUsers = false,
                 ConnectionTimeout = int.MaxValue,
-                TotalShards = 4,
+                TotalShards = 1,
                 DefaultRetryMode = RetryMode.AlwaysRetry,
                 MessageCacheSize = 1024,
                 ExclusiveBulkDelete = true
