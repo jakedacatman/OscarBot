@@ -10,7 +10,7 @@ namespace OscarBot.Classes
 
     public static class IEnumerableExtensions
     {
-        public static string MakeString(this IEnumerable t)
+        public static string MakeString(this IEnumerable t, int level = 0)
         {
             if (t == null || !t.Cast<object>().Any())
                 return "[\n]";
@@ -18,10 +18,10 @@ namespace OscarBot.Classes
             StringBuilder sb = new StringBuilder();
             foreach (var thing in t)
             {
-                var toAppend = "  ";
+                var toAppend = string.Join(string.Empty, Enumerable.Repeat("  ", level + 1));
 
                 if (thing is ICollection h)
-                    toAppend += h.MakeString();
+                    toAppend += h.MakeString(level + 1);
                 else
                     toAppend += thing.ToString();
 
@@ -30,7 +30,7 @@ namespace OscarBot.Classes
                 sb.Append(toAppend);
             }
             var str = sb.ToString();
-            return $"[\n{str.Substring(0, str.Length - 2)}\n]";
+            return $"[\n{str.Substring(0, str.Length - 2)}\n{string.Join(string.Empty, Enumerable.Repeat("  ", level))}]";
         }
     }
 
