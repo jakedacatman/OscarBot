@@ -88,6 +88,7 @@ namespace OscarBot
                 {
                     await _manager.StartAsync(_client, lavaConfig);
                     await _client.SetActivityAsync(new Game($"over {counter} out of {_client.Shards.Count} shards", ActivityType.Watching));
+                    counter = 0;
                 }   
                 counter++;
             };

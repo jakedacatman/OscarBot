@@ -217,7 +217,7 @@ namespace OscarBot.Services
             }
 
             TimeSpan.TryParse(currPlaying.Length, out var ts);
-            await player.SeekAsync(ts.Subtract(TimeSpan.FromSeconds(1)));
+            await player.SeekAsync(ts.Subtract(TimeSpan.FromMilliseconds(250)));
         }
 
         private async Task<string> GetLyricsForTrack(LavaTrack track)

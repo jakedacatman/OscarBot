@@ -37,6 +37,10 @@ namespace OscarBot.Modules
             {
                 await ReplyAsync(embed: (await _misc.EvaluateAsync(Context, code)).Build());
             }
+            catch (System.Net.WebException ex ) when (ex.Message == "The remote server returned an error: (400) Bad Request.")
+            {
+                await ReplyAsync("Bisoga returned an HTTP 400 error (bad request). Are you doing something shady? :thinking:");
+            }
             catch (Exception e)
             {
                 await ReplyAsync(embed: _misc.GenerateErrorMessage(e).Build());

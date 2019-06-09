@@ -149,9 +149,13 @@ namespace OscarBot.Services
             }
 
             string description = $"in: ```cs\n{code}```\nout: \n```";
+            string tostringed = result == null ? "" : result.ToString();
 
             if (result is ICollection r)
+            {
                 description += $"{r.MakeString()}```";
+                tostringed = r.MakeString();
+            }
             else if (result == null || string.IsNullOrEmpty(result.ToString()))
                 description += $" ```";
             else
@@ -162,7 +166,7 @@ namespace OscarBot.Services
 
             var em = new EmbedBuilder()
                     .WithFooter($"Return type: {(result == null ? "null" : result.GetType().ToString())} • took {s.ElapsedTicks / 10000d} ms to compile and {c.ElapsedTicks / 10000d} ms to execute")
-                    .WithDescription(description.Length < 2048 ? description : $"in: ```cs\n{code}```\n \nout: **Output was too long for the embed, so here's a [link]({await UploadToBisogaAsync(result.ToString())}) to the result:**")
+                    .WithDescription(description.Length < 2048 ? description : $"in: ```cs\n{code}```\n \nout: **Output was too long for the embed, so here's a [link]({await UploadToBisogaAsync(tostringed)}) to the result:**")
                     .WithColor(Color.Green);
 
             await msg.DeleteAsync();
@@ -172,14 +176,38 @@ namespace OscarBot.Services
 
         private async Task<EmbedBuilder> GenerateErrorAsync(string code, Exception e)
         {
+            bool doCodeBlockForIn = true;
+            if (code.Length > 1000)
+            {
+                code = await UploadToBisogaAsync(code);
+                doCodeBlockForIn = false;
+            }
+            string errorMsg;
+            if (e.StackTrace != null)
+                errorMsg = $"{e.Message}\n{e.StackTrace.Substring(0, e.StackTrace.IndexOf("---") + 1)}";
+            else
+                errorMsg = $"{e.Message}";
+            bool doCodeBlockForOut = true;
+            if (errorMsg.Length > 1000)
+            {
+                errorMsg = await UploadToBisogaAsync(errorMsg);
+                doCodeBlockForOut = false;
+            }
+
             string description;
-            if (e.StackTrace == null)
-                description = $"in: ```cs\n{code}```\n \nout: \n```{e.Message}```";
-            else description = $"in: ```cs\n{code}```\n \nout: \n```{e.Message}\n{e.StackTrace.Substring(0, e.StackTrace.IndexOf("---") + 1)}```";
+            if (doCodeBlockForIn)
+                description = $"in: ```cs\n{code}```";
+            else
+                description = $"in:\n**[input]({code})**";
+
+            if (doCodeBlockForOut)
+                description += $"\n \nout: \n```{errorMsg}```";
+            else
+                description += $"\n \nout: \nHere is a **[link]({errorMsg})** to the error message.```";
 
             var em = new EmbedBuilder()
                     .WithFooter($"{e.GetType()}")
-                    .WithDescription(description.Length < 2048 ? description : $"in: ```cs\n{code}```\n \nout: **Error was too long for the embed, so here's a [link]({await UploadToBisogaAsync($"{e.Message}\n{e.StackTrace.Substring(0, e.StackTrace.IndexOf("---") + 1)}")}) to the result:**")
+                    .WithDescription(description)
                     .WithColor(Color.Red);
             return em;
         }
@@ -187,13 +215,34 @@ namespace OscarBot.Services
         {
             var msg = new StringBuilder(compErrors.Count());
             foreach (var h in compErrors)
-                msg.Append("• " + h.GetMessage() + "\n");
+                msg.Append("• " + h.GetMessage() + "\n"); bool doCodeBlockForIn = true;
+            if (code.Length > 1000)
+            {
+                code = await UploadToBisogaAsync(code);
+                doCodeBlockForIn = false;
+            }
+            string errorMsg = msg.ToString();
+            bool doCodeBlockForOut = true;
+            if (errorMsg.Length > 1000)
+            {
+                errorMsg = await UploadToBisogaAsync(errorMsg);
+                doCodeBlockForOut = false;
+            }
 
-            var description = $"in: ```cs\n{code}```\n \nout: \n```{msg}```";
+            string description;
+            if (doCodeBlockForIn)
+                description = $"in: ```cs\n{code}```";
+            else
+                description = $"in:\n**[input]({code})**";
+
+            if (doCodeBlockForOut)
+                description += $"\n \nout: \n```{errorMsg}```";
+            else
+                description += $"\n \nout: \nHere is a **[link]({errorMsg})** to the compilation errors.";
 
             var em = new EmbedBuilder()
                     .WithFooter(typeof(CompilationErrorException).ToString())
-                    .WithDescription(description.Length < 1000 ? description : $"in: ```cs\n{code}```\n \nout: **Error was too long for the embed, so here's a [link]({await UploadToBisogaAsync(msg.ToString())} to the result:**")
+                    .WithDescription(description)
                     .WithColor(Color.Red);
             return em;
         }
