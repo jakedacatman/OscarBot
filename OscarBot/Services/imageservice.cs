@@ -70,7 +70,7 @@ namespace OscarBot.Services
 
             if (b.PixelFormat != PixelFormat.Format24bppRgb)
             {
-                using (var clone = new Bitmap(b.Width, b.Height, PixelFormat.Format24bppRgb))
+                var clone = new Bitmap(b.Width, b.Height, PixelFormat.Format24bppRgb);
                 using (Graphics g = Graphics.FromImage(clone))
                 {
                     g.DrawImage(b, new Rectangle(0, 0, b.Width, b.Height));
