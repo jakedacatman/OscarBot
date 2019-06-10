@@ -18,6 +18,9 @@ namespace OscarBot.Classes
             StringBuilder sb = new StringBuilder();
             foreach (var thing in t)
             {
+                if (thing == null)
+                    continue;
+
                 var toAppend = string.Join(string.Empty, Enumerable.Repeat("  ", level + 1));
 
                 if (thing is ICollection h)

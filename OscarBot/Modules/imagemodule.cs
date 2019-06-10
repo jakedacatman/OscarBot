@@ -33,7 +33,7 @@ namespace OscarBot.Modules
             try
             {
                 if (quality < 0 || quality > 100) quality = 50;
-
+                
                 string url;
                 if (user == null)
                     url = Context.User.GetAvatarUrl(ImageFormat.Auto, 512);

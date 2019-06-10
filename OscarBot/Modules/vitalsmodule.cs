@@ -127,6 +127,7 @@ namespace OscarBot.Modules
             try
             {
                 var cmds = _commands.Commands.Where(x => x.Name == command);
+                var aliases =  _commands.Commands.Where(x => x.Aliases.Where(y => y == command).Any());
                 if (cmds.Any())
                 {
                     var firstCmd = cmds.First();
@@ -146,7 +147,7 @@ namespace OscarBot.Modules
                         var parameters = new List<string>();
                         foreach (ParameterInfo param in cmd.Parameters)
                         {
-                            parameters.Add($"{param} ({param.Summary})");
+                            parameters.Add($"{param}:{param.Type} ({param.Summary})");
                         }
                         
                         sb.Append($"**{counter}.**\n " + (parameters.Any() ? string.Join("\n", parameters) : "(none)") + "\n\n");
@@ -160,6 +161,45 @@ namespace OscarBot.Modules
 
                     EmbedBuilder embed = new EmbedBuilder()
                         .WithTitle($"Information for {firstCmd.Name}:")
+                        .WithColor(_misc.RandomColor())
+                        .WithCurrentTimestamp()
+                        .WithFields(fields);
+
+                    await ReplyAsync(embed: embed.Build());
+                }
+                else if (aliases.Any())
+                {
+                    var firstAlias = aliases.First();
+
+                    var fields = new List<EmbedFieldBuilder>
+                    {
+                        new EmbedFieldBuilder().WithName("Name").WithValue(firstAlias.Name).WithIsInline(true),
+                        new EmbedFieldBuilder().WithName("Category").WithValue(firstAlias.Module.Name ?? "(none)").WithIsInline(true),
+                        new EmbedFieldBuilder().WithName("Aliases").WithValue(firstAlias.Aliases.Count > 1 ? string.Join(", ", firstAlias.Aliases.Where(x => x != firstAlias.Name)) : "(none)").WithIsInline(true),
+                        new EmbedFieldBuilder().WithName("Summary").WithValue(firstAlias.Summary ?? "(none)").WithIsInline(false),
+                        new EmbedFieldBuilder().WithName("Parameters").WithValue(" ").WithIsInline(false)
+                    };
+                    int counter = 1;
+                    StringBuilder sb = new StringBuilder();
+                    foreach (var cmd in aliases)
+                    {
+                        var parameters = new List<string>();
+                        foreach (ParameterInfo param in cmd.Parameters)
+                        {
+                            parameters.Add($"{param}:{param.Type} ({param.Summary})");
+                        }
+
+                        sb.Append($"**{counter}.**\n " + (parameters.Any() ? string.Join("\n", parameters) : "(none)") + "\n\n");
+                        counter++;
+                    }
+
+                    var last = fields.Last();
+                    fields.Remove(last);
+                    last.WithValue(sb.ToString());
+                    fields.Add(last);
+
+                    EmbedBuilder embed = new EmbedBuilder()
+                        .WithTitle($"Information for {firstAlias.Name}:")
                         .WithColor(_misc.RandomColor())
                         .WithCurrentTimestamp()
                         .WithFields(fields);

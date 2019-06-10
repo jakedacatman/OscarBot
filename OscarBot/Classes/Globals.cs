@@ -54,7 +54,8 @@ namespace OscarBot.Classes
             "Victoria",
             "Victoria.Entities",
             "Victoria.Helpers",
-            "Victoria.Queue"
+            "Victoria.Queue",
+            "System.IO"
         };
     }
 }

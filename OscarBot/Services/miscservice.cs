@@ -103,7 +103,8 @@ namespace OscarBot.Services
                 _db = _db,
                 _misc = this,
                 _lavaRestClient = _lavaRestClient,
-                _manager = _manager
+                _manager = _manager,
+               Random = new Random()
             };
             var options = ScriptOptions.Default
                 .AddReferences(assemblies)
@@ -148,18 +149,24 @@ namespace OscarBot.Services
                 return await GenerateErrorAsync(code, eval.Exception);
             }
 
-            string description = $"in: ```cs\n{code}```\nout: \n```";
+            string description;
+            if (code.Length < 1000)
+                 description = $"in: ```cs\n{code}```\nout: \n";
+            else
+                description = $"in: **[input]({await UploadToBisogaAsync(code)})**\nout: \n";
             string tostringed = result == null ? "" : result.ToString();
 
             if (result is ICollection r)
             {
-                description += $"{r.MakeString()}```";
+                description += $"```{r.MakeString()}```";
                 tostringed = r.MakeString();
             }
             else if (result == null || string.IsNullOrEmpty(result.ToString()))
-                description += $" ```";
+                description += $"``` ```";
+            else if (tostringed.Length > 1000)
+                description += $"Here is a **[link]({await UploadToBisogaAsync(tostringed)})** to the result.";
             else
-                description += $"{result}```";
+                description += $"```{tostringed}```";
 
             if (sb.ToString().Length > 0)
                 description += $"\nConsole: \n```\n{sb}\n```";

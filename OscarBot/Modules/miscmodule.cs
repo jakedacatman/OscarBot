@@ -37,9 +37,13 @@ namespace OscarBot.Modules
             {
                 await ReplyAsync(embed: (await _misc.EvaluateAsync(Context, code)).Build());
             }
-            catch (System.Net.WebException ex ) when (ex.Message == "The remote server returned an error: (400) Bad Request.")
+            catch (System.Net.WebException e) when (e.Message == "The remote server returned an error: (400) Bad Request.")
             {
                 await ReplyAsync("Bisoga returned an HTTP 400 error (bad request). Are you doing something shady? :thinking:");
+            }
+            catch (System.Net.WebException e) when (e.Message == "The remote server returned an error: (413) Payload Too Large.")
+            {
+                await ReplyAsync("Bisoga returned an HTTP 413 error (payload too large). Are you doing something shady? :thinking:");
             }
             catch (Exception e)
             {
