@@ -6,6 +6,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using OscarBot.Classes;
 
 namespace OscarBot.Services
 {
@@ -50,6 +51,11 @@ namespace OscarBot.Services
 
         public string RandomColor(Bitmap b, string type, long quality, int tolerance)
         {
+            List<IDisposable> toDispose = new List<IDisposable>
+            {
+                b
+            };
+
             if (type.ToLower() == "jpg") type = "jpeg";
 
             var s = (ImageFormat)typeof(ImageFormat).GetProperties().Where(x => x.Name.ToLower() == type.ToLower()).First().GetValue(ImageFormat.Bmp, null); //kinda hacky but beats hardcoding
@@ -62,6 +68,18 @@ namespace OscarBot.Services
             string e = type.ToLower() == "jpeg" ? "jpg" : s.ToString().ToLower();
             var path = $"temp_{new Random().Next()}.{e}";
 
+            if (b.PixelFormat != PixelFormat.Format24bppRgb)
+            {
+                using (var clone = new Bitmap(b.Width, b.Height, PixelFormat.Format24bppRgb))
+                using (Graphics g = Graphics.FromImage(clone))
+                {
+                    g.DrawImage(b, new Rectangle(0, 0, b.Width, b.Height));
+                    b.Dispose();
+                    b = clone;
+                    toDispose.Add(clone);
+                }
+            }
+
             var bData = b.LockBits(new Rectangle(0, 0, b.Width, b.Height), ImageLockMode.ReadWrite, b.PixelFormat);
             var amnt = Math.Abs(bData.Stride) * bData.Height;
             var vals = new byte[amnt];
@@ -69,38 +87,73 @@ namespace OscarBot.Services
 
             Marshal.Copy(p, vals, 0, amnt);
 
-            Dictionary<byte, byte> randColors = new Dictionary<byte, byte>();
+            Dictionary<BitmapColor, BitmapColor> mapping = new Dictionary<BitmapColor, BitmapColor>();
 
-            foreach (byte by in vals)
-                if (!randColors.Keys.Where(x => x == by).Any())
-                    randColors.Add(by, (byte)_random.Next(256));
+            for (int i = 0; i < vals.Length; i += 3)
+            {
+                byte rVal = vals[i];
+                byte gVal = vals[i + 1];
+                byte bVal = vals[i + 2];
+
+                BitmapColor pixel = new BitmapColor(rVal, gVal, bVal);
+
+                if (!mapping.ContainsKey(pixel))
+                {
+                    var newClr = new BitmapColor((byte)_random.Next(256), (byte)_random.Next(256), (byte)_random.Next(256));
+                    mapping.Add(pixel, newClr);
+                }
                 else
                 {
-                    int lower = by - tolerance;
-                    int upper = by + tolerance;
+                    int lowerR = rVal - tolerance;
+                    int upperR = rVal + tolerance;
 
-                    if (lower < byte.MinValue) lower = byte.MinValue;
-                    if (upper > byte.MaxValue) upper = byte.MaxValue;
+                    if (lowerR < byte.MinValue) lowerR = byte.MinValue;
+                    if (upperR > byte.MaxValue) upperR = byte.MaxValue;
 
-                    var range = Enumerable.Range(lower, upper);
-                    if (!randColors.Keys.Where(x => range.Contains(x)).Any())
+                    int lowerG = gVal - tolerance;
+                    int upperG = gVal + tolerance;
+
+                    if (lowerG < byte.MinValue) lowerG = byte.MinValue;
+                    if (upperG > byte.MaxValue) upperG = byte.MaxValue;
+
+                    int lowerB = bVal - tolerance;
+                    int upperB = bVal + tolerance;
+
+                    if (lowerB < byte.MinValue) lowerB = byte.MinValue;
+                    if (upperB > byte.MaxValue) upperB = byte.MaxValue;
+
+                    var rangeR = Enumerable.Range(lowerR, upperR).ToArray();
+                    var rangeG = Enumerable.Range(lowerG, upperG).ToArray();
+                    var rangeB = Enumerable.Range(lowerB, upperB).ToArray();
+
+                    List<BitmapColor> allowedVals = new List<BitmapColor>();
+
+                    for (int f = 0; f < rangeR.Last(); f++)
                     {
-                        var rand = (byte)_random.Next(256);
-                        foreach (byte byt in range)
-                            randColors.Add(byt, rand);
+                        var clr = new BitmapColor((byte)rangeR[i], (byte)rangeG[i], (byte)rangeB[i]);
+                        allowedVals.Add(clr);
+                    }
+                    var newClr = new BitmapColor((byte)_random.Next(256), (byte)_random.Next(256), (byte)_random.Next(256));
+                    for (int q = 0; q < allowedVals.Count; q++)
+                    {
+                        if (mapping.ContainsKey(allowedVals[q]))
+                            mapping.Add(allowedVals[q], newClr);
                     }
                 }
 
-            byte[] newVals = new byte[vals.Length];
 
-            for (int i = 0; i < vals.Length; i++)
-                newVals[i] = randColors[vals[i]];
+                var mappedClr = mapping[pixel];
+                vals[i] = mappedClr.R;
+                vals[i + 1] = mappedClr.G;
+                vals[i + 2] = mappedClr.B;
+            }
 
-            Marshal.Copy(newVals, 0, p, amnt);
+            Marshal.Copy(vals, 0, p, amnt);
 
             b.UnlockBits(bData);
             b.Save(path, codecBlack, eParams);
-            b.Dispose();
+            foreach (var i in toDispose)
+                i.Dispose();
 
             return path;
         }

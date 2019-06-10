@@ -151,7 +151,7 @@ namespace OscarBot.Modules
         [Command("randclr")]
         [Alias("randomcolor")]
         [Summary("Makes each color in an image a random color.")]
-        public async Task RandColorCmd([Summary("The user whose avatar's colors will be replaced with random ones.")]SocketGuildUser user = null, int tolerance = 0)
+        public async Task RandColorCmd([Summary("The user whose avatar's colors will be replaced with random ones.")]SocketGuildUser user = null, [Summary("The amount of similarity between colors where similar colors will become the same random color.")]int tolerance = 0)
         {
             try
             {
@@ -178,7 +178,7 @@ namespace OscarBot.Modules
         [Command("randclr")]
         [Alias("randomcolor")]
         [Summary("Makes each color in an image a random color.")]
-        public async Task RandColorCmd([Summary("The URL of the image in question.")]string url = null, [Summary("The shortened form of the format.")]string format = "jpg", int tolerance = 0)
+        public async Task RandColorCmd([Summary("The URL of the image in question.")]string url = null, [Summary("The shortened form of the format.")]string format = "jpg", [Summary("The amount of similarity between colors where similar colors will become the same random color.")]int tolerance = 0)
         {
             try
             {
@@ -223,7 +223,7 @@ namespace OscarBot.Modules
         [Command("randclr")]
         [Alias("randomcolor")]
         [Summary("Makes each color in an image a random color.")]
-        public async Task RandColorCmd([Summary("The shortened form of the format.")]string format = "jpg", int tolerance = 0)
+        public async Task RandColorCmd([Summary("The shortened form of the format.")]string format = "jpg", [Summary("The amount of similarity between colors where similar colors will become the same random color.")]int tolerance = 0)
         {
             try
             {

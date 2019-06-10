@@ -385,6 +385,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Classes\BitmapColor.cs" />
     <Compile Include="Classes\Models\ApiKey.cs" />
     <Compile Include="Classes\EntityContext.cs" />
     <Compile Include="Classes\Extensions.cs" />
