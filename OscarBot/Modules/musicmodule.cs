@@ -96,7 +96,7 @@ namespace OscarBot.Modules
 
                     foreach (var result in response.Items)
                     {
-                        titles.Add(counter.ToString() + ". " + result.Snippet.Title + $" *by {result.Snippet.ChannelTitle}*");
+                        titles.Add($"{counter}. {result.Snippet.Title} *by {result.Snippet.ChannelTitle}*");
                         counter++;
                     }
 

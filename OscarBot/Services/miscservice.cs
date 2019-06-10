@@ -28,12 +28,15 @@ namespace OscarBot.Services
         private readonly LavaShardClient _manager;
         private readonly LavaRestClient _lavaRestClient;
 
-        public MiscService(DiscordShardedClient client, DbService db, LavaShardClient manager, LavaRestClient lavaRestClient)
+        private readonly Random _random;
+
+        public MiscService(DiscordShardedClient client, DbService db, LavaShardClient manager, LavaRestClient lavaRestClient, Random random)
         {
             _client = client;
             _db = db;
             _manager = manager;
             _lavaRestClient = lavaRestClient;
+            _random = random;
         }
 
         private readonly string[] errorMessages = new string[]
@@ -96,7 +99,7 @@ namespace OscarBot.Services
                 Client = context.Client,
                 Context = context,
                 Guild = context.Guild,
-                Channel = context.Channel as SocketGuildChannel,
+                Channel = context.Channel,
                 User = context.User as SocketGuildUser,
                 Message = context.Message,
                 Console = new FakeConsole(sb),
@@ -104,11 +107,14 @@ namespace OscarBot.Services
                 _misc = this,
                 _lavaRestClient = _lavaRestClient,
                 _manager = _manager,
-               Random = new Random()
+                Random = _random
             };
             var options = ScriptOptions.Default
                 .AddReferences(assemblies)
-                .AddImports(globals.Imports);
+                .AddImports(globals.Imports)
+                .WithAllowUnsafe(true)
+                .WithCheckOverflow(true)
+                .WithLanguageVersion(LanguageVersion.CSharp8);
 
             Stopwatch s = Stopwatch.StartNew();
             var script = CSharpScript.Create(code, options, typeof(Globals));
@@ -171,8 +177,15 @@ namespace OscarBot.Services
             if (sb.ToString().Length > 0)
                 description += $"\nConsole: \n```\n{sb}\n```";
 
+            string footer = "";
+            if (result is ICollection coll)
+                footer += $"Collection has {coll.Count} members • ";
+
+            footer += $"Return type: {(result == null ? "null" : result.GetType().ToString())} • took {s.ElapsedTicks / 10000d} ms to compile and {c.ElapsedTicks / 10000d} ms to execute";
+
+
             var em = new EmbedBuilder()
-                    .WithFooter($"Return type: {(result == null ? "null" : result.GetType().ToString())} • took {s.ElapsedTicks / 10000d} ms to compile and {c.ElapsedTicks / 10000d} ms to execute")
+                    .WithFooter(footer)
                     .WithDescription(description.Length < 2048 ? description : $"in: ```cs\n{code}```\n \nout: **Output was too long for the embed, so here's a [link]({await UploadToBisogaAsync(tostringed)}) to the result:**")
                     .WithColor(Color.Green);
 

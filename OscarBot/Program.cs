@@ -24,7 +24,7 @@ namespace OscarBot
         private IServiceProvider _services;
         private LavaShardClient _manager;
         private LavaRestClient _lavaRestClient;
-        private readonly Configuration lavaConfig = new Configuration { AutoDisconnect = true, InactivityTimeout = TimeSpan.FromSeconds(30), PreservePlayers = true, LogSeverity = LogSeverity.Verbose, ReconnectAttempts = 20, ReconnectInterval = TimeSpan.FromSeconds(3) };
+      private readonly Configuration lavaConfig = new Configuration { AutoDisconnect = false, InactivityTimeout = TimeSpan.FromSeconds(30), PreservePlayers = true, LogSeverity = LogSeverity.Verbose, ReconnectAttempts = 20, ReconnectInterval = TimeSpan.FromSeconds(3), SelfDeaf = true };
 
         public static void Main(string[] args) => new Program().Start().GetAwaiter().GetResult();
 
@@ -59,6 +59,7 @@ namespace OscarBot
                 .AddSingleton(_commands)
                 .AddSingleton(_manager)
                 .AddSingleton(_lavaRestClient)
+                .AddSingleton(new Random())
                 .AddSingleton<DbService>()
                 .AddSingleton<ModerationService>()
                 .AddSingleton<MiscService>()
