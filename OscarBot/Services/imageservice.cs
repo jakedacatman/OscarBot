@@ -23,7 +23,8 @@ namespace OscarBot.Services
         {
             if (type.ToLower() == "jpg") type = "jpeg";
 
-            var s = (ImageFormat)typeof(ImageFormat).GetProperties().Where(x => x.Name.ToLower() == type.ToLower()).First().GetValue(ImageFormat.Bmp, null); //kinda hacky but beats hardcoding
+            var formats = typeof(ImageFormat).GetProperties().Where(x => x.Name.ToLower() == type.ToLower());
+            var s = formats.Any() ? (ImageFormat)formats.First().GetValue(ImageFormat.Bmp, null) : ImageFormat.Jpeg;  //kinda hacky but beats hardcoding
 
             ImageCodecInfo codecBlack = EncoderOf(s) ?? ImageCodecInfo.GetImageEncoders().Where(x => x.FormatID == ImageFormat.Jpeg.Guid).First();
 
@@ -58,7 +59,8 @@ namespace OscarBot.Services
 
             if (type.ToLower() == "jpg") type = "jpeg";
 
-            var s = (ImageFormat)typeof(ImageFormat).GetProperties().Where(x => x.Name.ToLower() == type.ToLower()).First().GetValue(ImageFormat.Bmp, null); //kinda hacky but beats hardcoding
+            var formats = typeof(ImageFormat).GetProperties().Where(x => x.Name.ToLower() == type.ToLower());
+            var s = formats.Any() ? (ImageFormat)formats.First().GetValue(ImageFormat.Bmp, null) : ImageFormat.Jpeg;  //kinda hacky but beats hardcoding
 
             ImageCodecInfo codecBlack = EncoderOf(s) ?? ImageCodecInfo.GetImageEncoders().Where(x => x.FormatID == ImageFormat.Jpeg.Guid).First();
 
