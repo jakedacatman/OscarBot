@@ -51,7 +51,7 @@ namespace OscarBot.Modules
             }
             catch (Exception e)
             {
-                await ReplyAsync(embed: _misc.GenerateErrorMessage(e).Build());
+                await ReplyAsync(embed: (await _misc.GenerateErrorMessage(e)).Build());
             }
         }
         [Command("compress")]
@@ -97,7 +97,7 @@ namespace OscarBot.Modules
             }
             catch (Exception e)
             {
-                await ReplyAsync(embed: _misc.GenerateErrorMessage(e).Build());
+                await ReplyAsync(embed: (await _misc.GenerateErrorMessage(e)).Build());
             }
         }
         [Command("compress")]
@@ -134,7 +134,7 @@ namespace OscarBot.Modules
             }
             catch (Exception e)
             {
-                await ReplyAsync(embed: _misc.GenerateErrorMessage(e).Build());
+                await ReplyAsync(embed: (await _misc.GenerateErrorMessage(e)).Build());
             }
         }
 
@@ -172,7 +172,7 @@ namespace OscarBot.Modules
             }
             catch (Exception e)
             {
-                await ReplyAsync(embed: _misc.GenerateErrorMessage(e).Build());
+                await ReplyAsync(embed: (await _misc.GenerateErrorMessage(e)).Build());
             }
         }
         [Command("randclr")]
@@ -217,7 +217,7 @@ namespace OscarBot.Modules
             }
             catch (Exception e)
             {
-                await ReplyAsync(embed: _misc.GenerateErrorMessage(e).Build());
+                await ReplyAsync(embed: (await _misc.GenerateErrorMessage(e)).Build());
             }
         }
         [Command("randclr")]
@@ -253,7 +253,7 @@ namespace OscarBot.Modules
             }
             catch (Exception e)
             {
-                await ReplyAsync(embed: _misc.GenerateErrorMessage(e).Build());
+                await ReplyAsync(embed: (await _misc.GenerateErrorMessage(e)).Build());
             }
         }
     }

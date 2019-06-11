@@ -47,7 +47,7 @@ namespace OscarBot.Modules
             }
             catch (Exception e)
             {
-                await ReplyAsync(embed: _misc.GenerateErrorMessage(e).Build());
+                await ReplyAsync(embed: (await _misc.GenerateErrorMessage(e)).Build());
             }
         }
     }

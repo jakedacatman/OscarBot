@@ -135,6 +135,7 @@ namespace OscarBot.Services
                         var clr = new BitmapColor((byte)rangeR[i], (byte)rangeG[i], (byte)rangeB[i]);
                         allowedVals.Add(clr);
                     }
+
                     var newClr = new BitmapColor((byte)_random.Next(256), (byte)_random.Next(256), (byte)_random.Next(256));
                     for (int q = 0; q < allowedVals.Count; q++)
                     {

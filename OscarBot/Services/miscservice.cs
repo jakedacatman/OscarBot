@@ -61,17 +61,28 @@ namespace OscarBot.Services
             "[insert funny phrase]"
         };
 
-        public EmbedBuilder GenerateErrorMessage(Exception e)
+        public async Task<EmbedBuilder> GenerateErrorMessage(Exception e)
         {
-            Random r = new Random();
             Console.WriteLine(e.ToString());
+
+            string description = "This command has thrown an exception. Here is ";
+
+            if (e.Message.Length < 1000)
+                description += $"its message:\n**{e.Message}**";
+            else
+                description += $"a [link]({await UploadToBisogaAsync(e.Message)}) to its message.";
+            description += "\nStack trace:\n";
+            if (e.StackTrace.Length < 1000)
+                description += $"```{e.StackTrace}```";
+            else
+                description += $"[here]({await UploadToBisogaAsync(e.StackTrace)})";
 
             EmbedBuilder embed = new EmbedBuilder()
                 .WithColor(RandomColor())
                 .WithCurrentTimestamp()
                 .WithFooter(e.GetType().ToString())
-                .WithDescription($"This command has thrown an exception. Here is its message:\n**{e.Message}**\nStack trace:\n```{e.StackTrace}```")
-                .WithTitle(errorMessages[r.Next(errorMessages.Length)]);
+                .WithDescription(description)
+                .WithTitle(errorMessages[_random.Next(errorMessages.Length)]);
 
             return embed;
         }

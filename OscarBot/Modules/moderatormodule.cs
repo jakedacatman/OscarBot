@@ -42,7 +42,7 @@ namespace OscarBot.Modules
             }
             catch (Exception e)
             {
-                await ReplyAsync(embed: _misc.GenerateErrorMessage(e).Build());
+                await ReplyAsync(embed: (await _misc.GenerateErrorMessage(e)).Build());
             }
         }
 
@@ -62,7 +62,7 @@ namespace OscarBot.Modules
 
             catch (Exception e)
             {
-                await ReplyAsync(embed: _misc.GenerateErrorMessage(e).Build());
+                await ReplyAsync(embed: (await _misc.GenerateErrorMessage(e)).Build());
             }
         }
 
@@ -88,7 +88,7 @@ namespace OscarBot.Modules
             }
             catch (Exception e)
             {
-                await ReplyAsync(embed: _misc.GenerateErrorMessage(e).Build());
+                await ReplyAsync(embed: (await _misc.GenerateErrorMessage(e)).Build());
             }
         }
 
@@ -111,7 +111,7 @@ namespace OscarBot.Modules
             }
             catch (HttpException e) when (e.DiscordCode.GetValueOrDefault() == 50013)
             {
-                var embed = _misc.GenerateErrorMessage(e);
+                var embed = (await _misc.GenerateErrorMessage(e));
                 embed.Description = $"{user.Mention} is above me in the hierarchy, so I cannot complete the requested action.";
 
                 await ReplyAsync(embed: embed.Build());
