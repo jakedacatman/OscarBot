@@ -33,21 +33,15 @@ namespace OscarBot.Modules
             try
             {
                 if (quality < 0 || quality > 100) quality = 50;
-                
+
                 string url;
                 if (user == null)
                     url = Context.User.GetAvatarUrl(ImageFormat.Auto, 512);
                 else url = user.GetAvatarUrl(ImageFormat.Auto, 512);
-                using (var c = new WebClient())
-                {
-                    byte[] s = c.DownloadData(new Uri(url));
-                    Stream fs = new MemoryStream(s);
-                    System.Drawing.Image i = System.Drawing.Image.FromStream(fs);
-                    fs.Close();
-                    var path = _img.Compress(new System.Drawing.Bitmap(i), "Jpeg", quality);
-                    await Context.Channel.SendFileAsync(path);
-                    File.Delete(path);
-                }
+                var bmp = await _img.GetBitmapFromUrlAsync(url);
+                var path = _img.Compress(bmp, "Jpeg", quality);
+                await Context.Channel.SendFileAsync(path);
+                File.Delete(path);
             }
             catch (Exception e)
             {
@@ -72,28 +66,22 @@ namespace OscarBot.Modules
 
                     }
                     url = att.First().Url;
-                    
+
                     if (url == null || !Uri.TryCreate(url.Trim('<', '>'), UriKind.Absolute, out result))
                     {
                         await ReplyAsync("Enter a URL, or attach an image.");
                         return;
                     }
                 }
-                using (var c = new WebClient())
+                if (result == null)
                 {
-                    if (result == null)
-                    {
-                        await ReplyAsync("Make sure the URL is valid.");
-                        return;
-                    }
-                    byte[] s = c.DownloadData(result);
-                    Stream fs = new MemoryStream(s);
-                    System.Drawing.Image i = System.Drawing.Image.FromStream(fs);
-                    fs.Close();
-                    var path = _img.Compress(new System.Drawing.Bitmap(i), format, quality);
-                    await Context.Channel.SendFileAsync(path);
-                    File.Delete(path);
+                    await ReplyAsync("Make sure the URL is valid.");
+                    return;
                 }
+                var bmp = await _img.GetBitmapFromUrlAsync(url);
+                var path = _img.Compress(bmp, format, quality);
+                await Context.Channel.SendFileAsync(path);
+                File.Delete(path);
             }
             catch (Exception e)
             {
@@ -108,29 +96,23 @@ namespace OscarBot.Modules
             try
             {
                 if (quality < 0 || quality > 100) quality = 50;
-                    string url = Context.Message.Attachments.Any() ? Context.Message.Attachments.First().Url.Trim('<', '>') : Context.User.GetAvatarUrl(ImageFormat.Auto, 512);
+                string url = Context.Message.Attachments.Any() ? Context.Message.Attachments.First().Url.Trim('<', '>') : Context.User.GetAvatarUrl(ImageFormat.Auto, 512);
                 if (url == null || !Uri.IsWellFormedUriString(url, UriKind.Absolute))
                 {
                     await ReplyAsync("Attach an image.");
                     return;
                 }
 
-                using (var c = new WebClient())
+                Uri.TryCreate(url, UriKind.Absolute, out Uri result);
+                if (result == null)
                 {
-                    Uri.TryCreate(url, UriKind.Absolute, out Uri result);
-                    if (result == null)
-                    {
-                        await ReplyAsync("Make sure the URL is valid.");
-                        return;
-                    }
-                    byte[] s = c.DownloadData(result);
-                    Stream fs = new MemoryStream(s);
-                    System.Drawing.Image i = System.Drawing.Image.FromStream(fs);
-                    fs.Close();
-                    var path = _img.Compress(new System.Drawing.Bitmap(i), format, quality);
-                    await Context.Channel.SendFileAsync(path);
-                    File.Delete(path);
+                    await ReplyAsync("Make sure the URL is valid.");
+                    return;
                 }
+                var bmp = await _img.GetBitmapFromUrlAsync(url);
+                var path = _img.Compress(bmp, format, quality);
+                await Context.Channel.SendFileAsync(path);
+                File.Delete(path);
             }
             catch (Exception e)
             {
@@ -159,16 +141,11 @@ namespace OscarBot.Modules
                 if (user == null)
                     url = Context.User.GetAvatarUrl(ImageFormat.Auto, 512);
                 else url = user.GetAvatarUrl(ImageFormat.Auto, 512);
-                using (var c = new WebClient())
-                {
-                    byte[] s = c.DownloadData(new Uri(url));
-                    Stream fs = new MemoryStream(s);
-                    System.Drawing.Image i = System.Drawing.Image.FromStream(fs);
-                    fs.Close();
-                    var path = _img.RandomColor(new System.Drawing.Bitmap(i), "Jpeg", 100, tolerance);
-                    await Context.Channel.SendFileAsync(path);
-                    File.Delete(path);
-                }
+
+                var bmp = await _img.GetBitmapFromUrlAsync(url);
+                var path = _img.RandomColor(bmp, "Jpeg", 100, tolerance);
+                await Context.Channel.SendFileAsync(path);
+                File.Delete(path);
             }
             catch (Exception e)
             {
@@ -199,21 +176,16 @@ namespace OscarBot.Modules
                         return;
                     }
                 }
-                using (var c = new WebClient())
+                if (result == null)
                 {
-                    if (result == null)
-                    {
-                        await ReplyAsync("Make sure the URL is valid.");
-                        return;
-                    }
-                    byte[] s = c.DownloadData(result);
-                    Stream fs = new MemoryStream(s);
-                    System.Drawing.Image i = System.Drawing.Image.FromStream(fs);
-                    fs.Close();
-                    var path = _img.RandomColor(new System.Drawing.Bitmap(i), format, 100, tolerance);
-                    await Context.Channel.SendFileAsync(path);
-                    File.Delete(path);
+                    await ReplyAsync("Make sure the URL is valid.");
+                    return;
                 }
+
+                var bmp = await _img.GetBitmapFromUrlAsync(url);
+                var path = _img.RandomColor(bmp, "Jpeg", 100, tolerance);
+                await Context.Channel.SendFileAsync(path);
+                File.Delete(path);
             }
             catch (Exception e)
             {
@@ -233,23 +205,17 @@ namespace OscarBot.Modules
                     await ReplyAsync("Attach an image.");
                     return;
                 }
-
-                using (var c = new WebClient())
+                Uri.TryCreate(url, UriKind.Absolute, out Uri result);
+                if (result == null)
                 {
-                    Uri.TryCreate(url, UriKind.Absolute, out Uri result);
-                    if (result == null)
-                    {
-                        await ReplyAsync("Make sure the URL is valid.");
-                        return;
-                    }
-                    byte[] s = c.DownloadData(result);
-                    Stream fs = new MemoryStream(s);
-                    System.Drawing.Image i = System.Drawing.Image.FromStream(fs);
-                    fs.Close();
-                    var path = _img.RandomColor(new System.Drawing.Bitmap(i), format, 100, tolerance);
-                    await Context.Channel.SendFileAsync(path);
-                    File.Delete(path);
+                    await ReplyAsync("Make sure the URL is valid.");
+                    return;
                 }
+
+                var bmp = await _img.GetBitmapFromUrlAsync(url);
+                var path = _img.RandomColor(bmp, "Jpeg", 100, tolerance);
+                await Context.Channel.SendFileAsync(path);
+                File.Delete(path);
             }
             catch (Exception e)
             {

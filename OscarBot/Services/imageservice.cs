@@ -4,9 +4,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Drawing;
 using System.Drawing.Imaging;
-using System.Reflection;
+using System.Net;
 using System.Runtime.InteropServices;
 using OscarBot.Classes;
+using System.IO;
 
 namespace OscarBot.Services
 {
@@ -159,6 +160,18 @@ namespace OscarBot.Services
                 i.Dispose();
 
             return path;
+        }
+
+        public async Task<Bitmap> GetBitmapFromUrlAsync(string url)
+        {
+            using (var c = new WebClient())
+            {
+                byte[] s = await c.DownloadDataTaskAsync(url);
+                Stream fs = new MemoryStream(s);
+                Image i = Image.FromStream(fs);
+                fs.Close();
+                return new Bitmap(i);
+            }
         }
     }
 }

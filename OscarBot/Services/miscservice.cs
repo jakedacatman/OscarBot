@@ -30,13 +30,16 @@ namespace OscarBot.Services
 
         private readonly Random _random;
 
-        public MiscService(DiscordShardedClient client, DbService db, LavaShardClient manager, LavaRestClient lavaRestClient, Random random)
+        private readonly ImageService _img;
+
+        public MiscService(DiscordShardedClient client, DbService db, LavaShardClient manager, LavaRestClient lavaRestClient, Random random, ImageService img)
         {
             _client = client;
             _db = db;
             _manager = manager;
             _lavaRestClient = lavaRestClient;
             _random = random;
+            _img = img;
         }
 
         private readonly string[] errorMessages = new string[]
@@ -118,7 +121,8 @@ namespace OscarBot.Services
                 _misc = this,
                 _lavaRestClient = _lavaRestClient,
                 _manager = _manager,
-                Random = _random
+                Random = _random,
+                _img = _img
             };
             var options = ScriptOptions.Default
                 .AddReferences(assemblies)

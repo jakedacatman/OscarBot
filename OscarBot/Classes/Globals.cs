@@ -22,6 +22,7 @@ namespace OscarBot.Classes
         public Random Random { get; internal set; }
         public LavaShardClient _manager { get; internal set; }
         public LavaRestClient _lavaRestClient { get; internal set; }
+        public ImageService _img { get; set; }
         public string[] Imports { get; internal set; } = new string[]
         {
             "System",
