@@ -94,6 +94,8 @@ namespace OscarBot.Services
 
             for (int i = 0; i < vals.Length; i += 3)
             {
+                if (i + 2 >= vals.Length) break;
+
                 byte rVal = vals[i];
                 byte gVal = vals[i + 1];
                 byte bVal = vals[i + 2];

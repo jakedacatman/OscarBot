@@ -349,9 +349,11 @@ namespace OscarBot.Modules
                 {
                     if (bass < 0 || bass > 8) bass = 2;
 
+                    var bassVal = (.25d * bass) - .25d;
+
                     List<EqualizerBand> eBands = new List<EqualizerBand>();
                     for (int i = 0; i < 5; i++)
-                        eBands.Add(new EqualizerBand { Band = (ushort)i, Gain = bass / 8d });
+                        eBands.Add(new EqualizerBand { Band = (ushort)i, Gain = bassVal });
                     for (int i = 5; i < 15; i++)
                         eBands.Add(new EqualizerBand { Band = (ushort)i, Gain = 0 });
 
@@ -378,12 +380,14 @@ namespace OscarBot.Modules
                 if (user.IsQueuer(song) || (user as SocketGuildUser).GuildPermissions.DeafenMembers)
                 {
                     if (treble < 0 || treble > 8) treble = 2;
+                    
+                    var trebleVal = (.25d * treble) - .25d;
 
                     List<EqualizerBand> eBands = new List<EqualizerBand>();
                     for (int i = 0; i < 10; i++)
                         eBands.Add(new EqualizerBand { Band = (ushort)i, Gain = 0 });
                     for (int i = 10; i < 15; i++)
-                        eBands.Add(new EqualizerBand { Band = (ushort)i, Gain = treble / 8d });
+                        eBands.Add(new EqualizerBand { Band = (ushort)i, Gain = trebleVal });
 
                     await _ms.EqualizeAsync(Context, eBands);
 
