@@ -10,7 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Discord.Addons.Interactive;
 using System.Reflection;
 using System.IO;
-using Victoria;
+
 using OscarBot.Classes;
 using OscarBot.Services;
 using OscarBot.TypeReaders;
@@ -22,10 +22,6 @@ namespace OscarBot
         private DiscordShardedClient _client;
         private CommandService _commands;
         private IServiceProvider _services;
-        private LavaShardClient _manager;
-        private LavaRestClient _lavaRestClient;
-      private readonly Configuration lavaConfig = new Configuration { AutoDisconnect = false, InactivityTimeout = TimeSpan.FromSeconds(30), PreservePlayers = true, LogSeverity = LogSeverity.Verbose, ReconnectAttempts = 20, ReconnectInterval = TimeSpan.FromSeconds(3), SelfDeaf = true };
-
         public static void Main(string[] args) => new Program().Start().GetAwaiter().GetResult();
 
         public async Task Start()
@@ -50,15 +46,9 @@ namespace OscarBot
                 IgnoreExtraArgs = false
             });
 
-            _manager = new LavaShardClient();
-
-            _lavaRestClient = new LavaRestClient(lavaConfig);
-
             _services = new ServiceCollection()
                 .AddSingleton(_client)
                 .AddSingleton(_commands)
-                .AddSingleton(_manager)
-                .AddSingleton(_lavaRestClient)
                 .AddSingleton(new Random())
                 .AddSingleton<DbService>()
                 .AddSingleton<ModerationService>()
@@ -66,6 +56,7 @@ namespace OscarBot
                 .AddSingleton<InteractiveService>()
                 .AddSingleton<ImageService>()
                 .AddSingleton<MusicService>()
+                .AddSingleton<AudioClient>()
                 .AddDbContext<EntityContext>()
                 .BuildServiceProvider();
 
@@ -87,15 +78,12 @@ namespace OscarBot
             {
                 if (counter >= _client.Shards.Count)
                 {
-                    await _manager.StartAsync(_client, lavaConfig);
                     await _client.SetActivityAsync(new Game($"over {counter} out of {_client.Shards.Count} shards", ActivityType.Watching));
                     counter = 0;
                 }   
                 counter++;
             };
 
-
-            _manager.Log += Log;
             _commands.Log += Log;
 
             await Task.Delay(-1);

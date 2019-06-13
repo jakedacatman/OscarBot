@@ -8,7 +8,7 @@ using Discord;
 using Discord.WebSocket;
 using Discord.Commands;
 using OscarBot.Services;
-using Victoria;
+
 using Discord.Addons.Interactive;
 
 namespace OscarBot.Modules

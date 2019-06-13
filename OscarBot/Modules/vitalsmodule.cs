@@ -11,7 +11,7 @@ using Discord.Addons.Interactive;
 using System.Diagnostics;
 using OscarBot.Services;
 using System.Net.Http;
-using Victoria;
+
 
 namespace OscarBot.Modules
 {
@@ -21,16 +21,14 @@ namespace OscarBot.Modules
         private readonly DiscordShardedClient _client;
         private readonly CommandService _commands;
         private readonly MiscService _misc;
-        private readonly LavaShardClient _lavaClient;
 
         private const int timeout = 10000; // 10 seconds
 
-        public VitalsModule(DiscordShardedClient client, CommandService commands, MiscService misc, LavaShardClient lavaClient)
+        public VitalsModule(DiscordShardedClient client, CommandService commands, MiscService misc)
         {
             _client = client;
             _commands = commands;
             _misc = misc;
-            _lavaClient = lavaClient;
         }
 
         [Command("ping")]
@@ -225,7 +223,6 @@ namespace OscarBot.Modules
             {
                 await ReplyAsync("Logging out in 10 seconds.");
                 await Task.Delay(10000);
-                await _lavaClient.DisposeAsync();
                 await _client.LogoutAsync();
                 _client.Dispose();
                 Environment.Exit(0);

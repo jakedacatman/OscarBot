@@ -380,11 +380,9 @@
       <Private>True</Private>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Victoria, Version=4.0.10.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Victoria.4.0.10\lib\netstandard2.0\Victoria.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Classes\AudioPlayer.cs" />
     <Compile Include="Classes\BitmapColor.cs" />
     <Compile Include="Classes\Models\ApiKey.cs" />
     <Compile Include="Classes\EntityContext.cs" />
@@ -395,7 +393,7 @@
     <Compile Include="Classes\Models\ModerationAction.cs" />
     <Compile Include="Classes\Models\Prefix.cs" />
     <Compile Include="Classes\CodeExitException.cs" />
-    <Compile Include="Classes\Models\Song.cs" />
+    <Compile Include="Classes\Song.cs" />
     <Compile Include="Modules\imagemodule.cs" />
     <Compile Include="Modules\miscmodule.cs" />
     <Compile Include="Modules\moderatormodule.cs" />
@@ -403,6 +401,7 @@
     <Compile Include="Modules\vitalsmodule.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Services\audioclient.cs" />
     <Compile Include="Services\dbservice.cs" />
     <Compile Include="Services\imageservice.cs" />
     <Compile Include="Services\miscservice.cs" />

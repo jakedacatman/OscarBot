@@ -8,8 +8,6 @@ using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 using Discord.Addons.Interactive;
-using Victoria;
-using Victoria.Entities;
 using Google.Apis.Services;
 using Google.Apis.YouTube.v3;
 using System.Net;
@@ -24,7 +22,7 @@ namespace OscarBot.Modules
     [Name("Music")]
     public class MusicModule : InteractiveBase<ShardedCommandContext>
     {
-        private readonly LavaShardClient _manager;
+        private readonly AudioClient _audio;
         private readonly DiscordShardedClient _client;
         private readonly MiscService _misc;
         private readonly MusicService _ms;
@@ -32,9 +30,9 @@ namespace OscarBot.Modules
         private readonly IServiceProvider _services;
 
 
-        public MusicModule(LavaShardClient manager, DiscordShardedClient client, MiscService misc, MusicService ms, DbService db, IServiceProvider services)
+        public MusicModule(AudioClient audio, DiscordShardedClient client, MiscService misc, MusicService ms, DbService db, IServiceProvider services)
         {
-            _manager = manager;
+            _audio = audio;
             _client = client;
             _misc = misc;
             _ms = ms;
@@ -64,10 +62,12 @@ namespace OscarBot.Modules
                         JObject obj = JsonConvert.DeserializeObject<JObject>(json);
 
                         if (obj.SelectToken("pageInfo").SelectToken("totalResults").Value<int>() == 0) return;
+                        var songUrl = $"https://www.youtube.com/watch?v={id}";
 
                         s = new Song
                         {
-                            URL = $"https://www.youtube.com/watch?v={id}",
+                            URL = songUrl,
+                            AudioURL = await _audio.GetAudioUrlAsync(songUrl),
                             QueuerId = Context.User.Id,
                             ChannelId = Context.Channel.Id,
                             GuildId = Context.Guild.Id,
@@ -124,10 +124,12 @@ namespace OscarBot.Modules
                     {
                         var json = await client.DownloadStringTaskAsync($"https://www.googleapis.com/youtube/v3/videos?id={id}&key={key}&part=snippet,contentDetails,statistics,status");
                         JObject obj = JsonConvert.DeserializeObject<JObject>(json);
+                        var songUrl = $"https://www.youtube.com/watch?v={id}";
 
                         s = new Song
                         {
-                            URL = $"https://www.youtube.com/watch?v={id}",
+                            URL = songUrl,
+                            AudioURL = await _audio.GetAudioUrlAsync(songUrl),
                             QueuerId = Context.User.Id,
                             ChannelId = Context.Channel.Id,
                             GuildId = Context.Guild.Id,
@@ -163,7 +165,7 @@ namespace OscarBot.Modules
         {
             try
             {
-                LavaPlayer player = _manager.GetPlayer(Context.Guild.Id);
+                AudioPlayer player = _audio.GetPlayer(Context.Guild.Id);
                 if (player == null || player.IsPlaying == false)
                 {
                     await ReplyAsync("No track is playing.");
@@ -178,7 +180,7 @@ namespace OscarBot.Modules
                 await ReplyAsync(embed: (await _misc.GenerateErrorMessage(e)).Build());
             }
         }
-
+        /*
         [Command("current")]
         [Alias("now", "nowplaying")]
         [Summary("Gets information about the currently playing track.")]
@@ -186,7 +188,7 @@ namespace OscarBot.Modules
         {
             try
             {
-                LavaPlayer player = _manager.GetPlayer(Context.Guild.Id);
+                AudioPlayer player = _audio.GetPlayer(Context.Guild.Id);
                 var s = _ms.GetQueue(Context).First();
 
                 if (player == null || player.IsPlaying == false)
@@ -227,6 +229,7 @@ namespace OscarBot.Modules
                 await ReplyAsync(embed: (await _misc.GenerateErrorMessage(e)).Build());
             }
         }
+        */
 
         [Command("queue")]
         [Alias("songs", "tracks")]
@@ -247,7 +250,7 @@ namespace OscarBot.Modules
                     int i = 1;
                     foreach (Song s in queue)
                     {
-                        if (i == 1 && _manager.GetPlayer(Context.Guild.Id) != null && _manager.GetPlayer(Context.Guild.Id).IsPlaying)
+                        if (i == 1 && _audio.GetPlayer(Context.Guild.Id) != null && _audio.GetPlayer(Context.Guild.Id).IsPlaying)
                         {
                             titles.Add($"{i}. **{s.Name}** (queued by <@{s.QueuerId}>) -- currently playing");
                         }
@@ -261,7 +264,6 @@ namespace OscarBot.Modules
                         .WithColor(_misc.RandomColor())
                         .WithDescription(string.Join("\n", titles))
                         .WithCurrentTimestamp()
-                        .WithFooter("Powered by Lavalink and Victoria")
                         .WithTitle("My queue");
                     await ReplyAsync("", false, em.Build());
                 }
@@ -297,11 +299,11 @@ namespace OscarBot.Modules
         [Command("volume")]
         [Alias("setvolume", "vol")]
         [Summary("Sets the volume to a certain percentage.")]
-        public async Task VolumeCmd([Summary("The percentage to set the volume to.")]int volume)
+        public async Task VolumeCmd([Summary("The percentage to set the volume to.")]uint volume)
         {
             try
             {
-                var player = _manager.GetPlayer(Context.Guild.Id);
+                AudioPlayer player = _audio.GetPlayer(Context.Guild.Id);
                 var user = Context.User;
                 var song = _ms.GetQueue(Context).First();
 
@@ -310,7 +312,7 @@ namespace OscarBot.Modules
                 {
                     if (volume < 0 || volume > 1000) volume = 100;
 
-                    await player.SetVolumeAsync(volume);
+                    player.SetVolume(volume);
 
                     await ReplyAsync($"Set volume to **{volume}%**!");
                 }
@@ -334,7 +336,7 @@ namespace OscarBot.Modules
                 await ReplyAsync(embed: (await _misc.GenerateErrorMessage(e)).Build());
             }
         }
-
+        /*
         [Command("bass")]
         [Alias("bassboost")]
         [Summary("Boosts the bass of the currently playing track.")]
@@ -423,6 +425,7 @@ namespace OscarBot.Modules
                 await ReplyAsync(embed: (await _misc.GenerateErrorMessage(e)).Build());
             }
         }
+        */
 
         [Command("skip")]
         [Summary("Votes to skip the current track, or skips it entirely if you queued it.")]
@@ -460,20 +463,6 @@ namespace OscarBot.Modules
                     .WithCurrentTimestamp();
 
                 await ReplyAsync(embed: em.Build());
-            }
-            catch (Exception e)
-            {
-                await ReplyAsync(embed: (await _misc.GenerateErrorMessage(e)).Build());
-            }
-        }
-
-        [Command("stats")]
-        [Summary("Views the stats of Lavalink, the music service.")]
-        public async Task StatsCmd()
-        {
-            try
-            {
-                await ReplyAsync(embed: _ms.GetStats().Build());
             }
             catch (Exception e)
             {

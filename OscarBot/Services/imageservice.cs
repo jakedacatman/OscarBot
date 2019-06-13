@@ -107,7 +107,7 @@ namespace OscarBot.Services
                     var newClr = new BitmapColor((byte)_random.Next(256), (byte)_random.Next(256), (byte)_random.Next(256));
                     mapping.Add(pixel, newClr);
                 }
-                else
+                else if (tolerance > 0)
                 {
                     int lowerR = rVal - tolerance;
                     int upperR = rVal + tolerance;
@@ -142,11 +142,10 @@ namespace OscarBot.Services
                     var newClr = new BitmapColor((byte)_random.Next(256), (byte)_random.Next(256), (byte)_random.Next(256));
                     for (int q = 0; q < allowedVals.Count; q++)
                     {
-                        if (mapping.ContainsKey(allowedVals[q]))
+                        if (!mapping.ContainsKey(allowedVals[q]))
                             mapping.Add(allowedVals[q], newClr);
                     }
                 }
-
 
                 var mappedClr = mapping[pixel];
                 vals[i] = mappedClr.R;

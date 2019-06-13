@@ -14,7 +14,7 @@ using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using System.Diagnostics;
 using Newtonsoft.Json;
-using Victoria;
+using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using Discord.Commands;
 
@@ -24,20 +24,16 @@ namespace OscarBot.Services
     {
         private readonly DiscordShardedClient _client;
         private readonly DbService _db;
-
-        private readonly LavaShardClient _manager;
-        private readonly LavaRestClient _lavaRestClient;
-
+        private IServiceProvider _services;
         private readonly Random _random;
-
         private readonly ImageService _img;
+        private List<int> ids = new List<int>();
 
-        public MiscService(DiscordShardedClient client, DbService db, LavaShardClient manager, LavaRestClient lavaRestClient, Random random, ImageService img)
+        public MiscService(DiscordShardedClient client, DbService db, IServiceProvider services, Random random, ImageService img)
         {
             _client = client;
             _db = db;
-            _manager = manager;
-            _lavaRestClient = lavaRestClient;
+            _services = services;
             _random = random;
             _img = img;
         }
@@ -119,8 +115,7 @@ namespace OscarBot.Services
                 Console = new FakeConsole(sb),
                 _db = _db,
                 _misc = this,
-                _lavaRestClient = _lavaRestClient,
-                _manager = _manager,
+                _audio = _services.GetService<AudioClient>(),
                 Random = _random,
                 _img = _img
             };
@@ -303,6 +298,18 @@ namespace OscarBot.Services
 
                 return await cl.UploadStringTaskAsync("https://bisoga.xyz/api/paste", encoded);
             }
+        }
+
+        public int GenerateId()
+        {
+            int generated;
+            do
+            {
+                generated = _random.Next();
+            }
+            while (ids.Contains(generated));
+            ids.Add(generated);
+            return generated;
         }
     }
 }

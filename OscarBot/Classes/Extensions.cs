@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Numerics;
 using System.Collections.Generic;
 using System.Text;
 using Discord;
@@ -56,6 +57,18 @@ namespace OscarBot.Classes
             }
             message = "This code will not exit.";
             return false;
+        }
+    }
+
+    public static class BigIntegerExtensions
+    {
+        public static BigInteger Factorial(this BigInteger i)
+        {
+            BigInteger h = 1;
+            for (BigInteger q = 1; q <= i; q++)
+                h *= q;
+
+            return h;
         }
     }
 }

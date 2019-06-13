@@ -2,7 +2,7 @@
 using OscarBot.Services;
 using Discord.Commands;
 using Discord.WebSocket;
-using Victoria;
+
 
 namespace OscarBot.Classes
 {
@@ -20,8 +20,7 @@ namespace OscarBot.Classes
         public MiscService _misc { get; internal set; }
         public FakeConsole Console { get; internal set; }
         public Random Random { get; internal set; }
-        public LavaShardClient _manager { get; internal set; }
-        public LavaRestClient _lavaRestClient { get; internal set; }
+        public AudioClient _audio { get; internal set; }
         public ImageService _img { get; set; }
         public string[] Imports { get; internal set; } = new string[]
         {
@@ -52,10 +51,6 @@ namespace OscarBot.Classes
             "System.Numerics",
             "Microsoft.EntityFrameworkCore",
             "Microsoft.Extensions.DependencyInjection",
-            "Victoria",
-            "Victoria.Entities",
-            "Victoria.Helpers",
-            "Victoria.Queue",
             "System.IO"
         };
     }
