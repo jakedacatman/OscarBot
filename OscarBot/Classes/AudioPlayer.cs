@@ -117,7 +117,11 @@ namespace OscarBot.Classes
             _didPlay = didPlay;
             wasSent = 0;
             if (dispose)
+            {
+                if (!_ffmpeg.HasExited)
+                    _ffmpeg.Kill();
                 _ffmpeg.Dispose();
+            }
 
             _didPlay = false;
         }
