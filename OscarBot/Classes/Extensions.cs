@@ -26,6 +26,8 @@ namespace OscarBot.Classes
 
                 if (thing is ICollection h)
                     toAppend += h.MakeString(level + 1);
+                else if (thing is IReadOnlyCollection<object> x)
+                    toAppend += x.MakeString(level + 1);
                 else
                     toAppend += thing.ToString();
 

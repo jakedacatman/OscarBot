@@ -25,15 +25,14 @@ namespace OscarBot.Services
             _client = client;
             _client.ShardReady += ShardReady;
         }
-
-        private int counter = 0;
+        
         private Task ShardReady(DiscordSocketClient cl)
         {
-            counter++;
-            if (counter == _client.Shards.Count)
+            if (!UnpunishIsRunning)
             {
                 _client.ShardReady -= ShardReady;
                 Task.Run(StartAsync);
+                UnpunishIsRunning = true;
             }
 
             return Task.CompletedTask;

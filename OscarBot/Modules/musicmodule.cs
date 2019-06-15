@@ -22,7 +22,7 @@ namespace OscarBot.Modules
     [Name("Music")]
     public class MusicModule : InteractiveBase<ShardedCommandContext>
     {
-        private readonly AudioClient _audio;
+        private readonly AudioService _audio;
         private readonly DiscordShardedClient _client;
         private readonly MiscService _misc;
         private readonly MusicService _ms;
@@ -30,7 +30,7 @@ namespace OscarBot.Modules
         private readonly IServiceProvider _services;
 
 
-        public MusicModule(AudioClient audio, DiscordShardedClient client, MiscService misc, MusicService ms, DbService db, IServiceProvider services)
+        public MusicModule(AudioService audio, DiscordShardedClient client, MiscService misc, MusicService ms, DbService db, IServiceProvider services)
         {
             _audio = audio;
             _client = client;
@@ -73,7 +73,7 @@ namespace OscarBot.Modules
                             GuildId = Context.Guild.Id,
                             Author = obj.SelectToken("items").First.SelectToken("snippet.channelTitle").Value<string>(),
                             Name = obj.SelectToken("items").First.SelectToken("snippet.title").Value<string>(),
-                            Length = $"{System.Xml.XmlConvert.ToTimeSpan(obj.SelectToken("items").First.SelectToken("contentDetails.duration").Value<string>()):g}",
+                            Length = System.Xml.XmlConvert.ToTimeSpan(obj.SelectToken("items").First.SelectToken("contentDetails.duration").Value<string>()),
                             Thumbnail = obj.SelectToken("items").First.SelectToken("snippet.thumbnails.high.url").Value<string>()
                         };
 
@@ -126,6 +126,8 @@ namespace OscarBot.Modules
                         JObject obj = JsonConvert.DeserializeObject<JObject>(json);
                         var songUrl = $"https://www.youtube.com/watch?v={id}";
 
+                        var pleasewait = await ReplyAsync($"Searching for your track... <a:search:588920003374350356>");
+
                         s = new Song
                         {
                             URL = songUrl,
@@ -135,11 +137,12 @@ namespace OscarBot.Modules
                             GuildId = Context.Guild.Id,
                             Author = obj.SelectToken("items").First.SelectToken("snippet.channelTitle").Value<string>(),
                             Name = obj.SelectToken("items").First.SelectToken("snippet.title").Value<string>(),
-                            Length = $"{System.Xml.XmlConvert.ToTimeSpan(obj.SelectToken("items").First.SelectToken("contentDetails.duration").Value<string>()):g}",
+                            Length = System.Xml.XmlConvert.ToTimeSpan(obj.SelectToken("items").First.SelectToken("contentDetails.duration").Value<string>()),
                             Thumbnail = obj.SelectToken("items").First.SelectToken("snippet.thumbnails.high.url").Value<string>()
                         };
                         if (obj.SelectToken("items").First.SelectToken("snippet.title").Value<string>() == null) return;
 
+                        await pleasewait.DeleteAsync();
                         await message.DeleteAsync();
 
                         await _ms.AddSongAsync(Context, s);
@@ -180,7 +183,7 @@ namespace OscarBot.Modules
                 await ReplyAsync(embed: (await _misc.GenerateErrorMessage(e)).Build());
             }
         }
-        /*
+        
         [Command("current")]
         [Alias("now", "nowplaying")]
         [Summary("Gets information about the currently playing track.")]
@@ -189,7 +192,9 @@ namespace OscarBot.Modules
             try
             {
                 AudioPlayer player = _audio.GetPlayer(Context.Guild.Id);
-                var s = _ms.GetQueue(Context).First();
+                var queue = _ms.GetQueue(Context);
+                if (!queue.Any()) return;
+                var s = queue.Peek();
 
                 if (player == null || player.IsPlaying == false)
                 {
@@ -203,8 +208,8 @@ namespace OscarBot.Modules
                     return;
                 }
 
-                var currPos = player.CurrentTrack.Position;
-                var len = player.CurrentTrack.Length;
+                var currPos = player.CurrentPosition;
+                var len = player.CurrentSong.Length;
 
                 var totalLen = 40;
                 var interval = Math.Round(len.TotalMilliseconds / totalLen, 2);
@@ -217,7 +222,7 @@ namespace OscarBot.Modules
                     .AddField("**Title:**", s.Name, false)
                     .AddField("**Position:**", $"[{ string.Join("", Enumerable.Repeat("\\|", (int)signNo)) + string.Join("", Enumerable.Repeat(".", totalLen - (int)signNo))}]\n[{currPos:g}/{len:g}]", false)
                     .AddField("**Author:**", s.Author, true)
-                    .AddField("**Stream?**", $"{player.CurrentTrack.IsStream}", true)
+                    .AddField("**Added at:**", $"{player.CurrentSong.AddedAt:g}", true)
                     .AddField("**URL:**", $"<{s.URL}>", false)
                     .WithCurrentTimestamp()
                     .WithFooter($"{(Context.User.IsQueuer(s) ? "Queued by you" : $"Queued by {Context.Client.Guilds.Where(x => x.Id == s.GuildId).First().Users.Where(x => x.Id == s.QueuerId).First()}")}");
@@ -229,7 +234,7 @@ namespace OscarBot.Modules
                 await ReplyAsync(embed: (await _misc.GenerateErrorMessage(e)).Build());
             }
         }
-        */
+        
 
         [Command("queue")]
         [Alias("songs", "tracks")]
@@ -248,7 +253,7 @@ namespace OscarBot.Modules
                 {
 
                     int i = 1;
-                    foreach (Song s in queue)
+                    foreach (Song s in queue.Take(10))
                     {
                         if (i == 1 && _audio.GetPlayer(Context.Guild.Id) != null && _audio.GetPlayer(Context.Guild.Id).IsPlaying)
                         {
@@ -263,8 +268,9 @@ namespace OscarBot.Modules
                     var em = new EmbedBuilder()
                         .WithColor(_misc.RandomColor())
                         .WithDescription(string.Join("\n", titles))
+                        .WithFooter($"{queue.Count} total songs")
                         .WithCurrentTimestamp()
-                        .WithTitle("My queue");
+                        .WithTitle("First 10 songs");
                     await ReplyAsync("", false, em.Build());
                 }
 
@@ -310,7 +316,7 @@ namespace OscarBot.Modules
                 if (player == null || !player.IsPlaying) return;
                 if (user.IsQueuer(song) || (user as SocketGuildUser).GuildPermissions.DeafenMembers)
                 {
-                    if (volume < 0 || volume > 1000) volume = 100;
+                    if (volume < 0 || volume > 100000) volume = 100;
 
                     player.SetVolume(volume);
 

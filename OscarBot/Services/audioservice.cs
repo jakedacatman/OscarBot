@@ -11,25 +11,46 @@ using OscarBot.Classes;
 
 namespace OscarBot.Services
 {
-    public class AudioClient
+    public class AudioService
     {
         private readonly DiscordShardedClient _client;
         private readonly MiscService _misc;
 
         private List<AudioPlayer> players = new List<AudioPlayer>();
 
-        public AudioClient(DiscordShardedClient client, MiscService misc)
+        private bool _isRunning = false;
+
+        public AudioService(DiscordShardedClient client, MiscService misc)
         {
             _client = client;
             _misc = misc;
+            _client.ShardReady += ShardReady;
         }
+
+        private Task ShardReady(DiscordSocketClient cl)
+        {
+            if (!_isRunning)
+            {
+                Console.WriteLine($"{DateTime.Now,19} [{"Info",8}] AudioService: Starting AudioService.");
+                _client.ShardReady -= ShardReady;
+                Task.Run(WaitForTrackEnd);
+                _isRunning = true;
+            }
+
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// player, reason
+        /// </summary>
+        public event Func<AudioPlayer, string, Task> TrackEnd;
 
         public AudioPlayer GetPlayer(ulong guildId) => players.Where(x => x.GuildId == guildId).FirstOrDefault();
 
         public async Task<AudioPlayer> JoinAsync(IVoiceChannel voiceChannel, ISocketMessageChannel textChannel)
         {
             var client = await voiceChannel.ConnectAsync(true);
-            var player = new AudioPlayer(voiceChannel.GuildId, textChannel, voiceChannel, client, this);
+            var player = new AudioPlayer(voiceChannel.GuildId, textChannel, voiceChannel, client, this, _client);
             players.Add(player);
             return player;
         }
@@ -38,6 +59,16 @@ namespace OscarBot.Services
         {
             await voiceChannel.DisconnectAsync();
             players.RemoveAll(x => x.GuildId == voiceChannel.GuildId);
+        }
+
+        private async Task WaitForTrackEnd()
+        {
+            while (true)
+            {
+                foreach (var p in players.Where(x => x._didPlay))
+                    TrackEnd?.Invoke(p, "finished");
+                await Task.Delay(500);
+            }
         }
         
         private string GetAudioUrl(string url)

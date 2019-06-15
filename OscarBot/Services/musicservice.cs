@@ -17,51 +17,53 @@ namespace OscarBot.Services
     {
         private readonly DiscordShardedClient _client;
         private readonly MiscService _misc;
-        private readonly AudioClient _audio;
-        private readonly ConcurrentDictionary<ulong, GuildQueue> _queues = new ConcurrentDictionary<ulong, GuildQueue>();
+        private readonly AudioService _audio;
 
-        public MusicService(DiscordShardedClient client, MiscService misc, AudioClient audio)
+        private ConcurrentDictionary<ulong, QueueAndSkips> _queues = new ConcurrentDictionary<ulong, QueueAndSkips>();
+
+        public MusicService(DiscordShardedClient client, MiscService misc, AudioService audio)
         {
             _client = client;
             _misc = misc;
             _audio = audio;
+            _audio.TrackEnd += TrackEnd;
         }
 
         public Queue<Song> GetQueue(ShardedCommandContext context)
         {
-            var queue = _queues.GetOrAdd(context.Guild.Id, x => new GuildQueue(context.Guild.Id, context.Channel.Id));
+            var queue = _queues.GetOrAdd(context.Guild.Id, x => new QueueAndSkips(context.Guild.Id, context.Channel.Id));
             return queue.Queue;
         }
         public Queue<Song> GetQueue(ulong guildId)
         {
-            _queues.TryGetValue(guildId, out GuildQueue queue);
+            _queues.TryGetValue(guildId, out QueueAndSkips queue);
             return queue.Queue;
         }
         public ulong GetChannelId(ulong guildId)
         {
-            _queues.TryGetValue(guildId, out GuildQueue queue);
+            _queues.TryGetValue(guildId, out QueueAndSkips queue);
             return queue.ChannelId;
         }
 
         public List<Skip> GetSkips(ShardedCommandContext context)
         {
-            var queue = _queues.GetOrAdd(context.Guild.Id, x => new GuildQueue(context.Guild.Id, context.Channel.Id));
-            return queue.Skipped;
+            var queue = _queues.GetOrAdd(context.Guild.Id, x => new QueueAndSkips(context.Guild.Id, context.Channel.Id));
+            return queue.Skips;
         }
 
-        private GuildQueue GetGuildQueue(ShardedCommandContext context)
+        private QueueAndSkips GetQueueForGuild(ShardedCommandContext context)
         {
-            var queue = _queues.GetOrAdd(context.Guild.Id, x => new GuildQueue(context.Guild.Id, context.Channel.Id));
+            var queue = _queues.GetOrAdd(context.Guild.Id, x => new QueueAndSkips(context.Guild.Id, context.Channel.Id));
             return queue;
         }
-        private GuildQueue GetGuildQueue(ulong guildId)
+        private QueueAndSkips GetQueueForGuild(ulong guildId)
         {
-            _queues.TryGetValue(guildId, out GuildQueue queue);
+            _queues.TryGetValue(guildId, out QueueAndSkips queue);
             return queue;
         }
         private Song Dequeue(ulong guildId)
         {
-            _queues.TryGetValue(guildId, out GuildQueue queue);
+            _queues.TryGetValue(guildId, out QueueAndSkips queue);
             return queue.Queue.Dequeue();
         }
 
@@ -82,7 +84,7 @@ namespace OscarBot.Services
                 .WithFields(fields)
                 .WithCurrentTimestamp();
 
-            var gq = GetGuildQueue(context);
+            var gq = GetQueueForGuild(context);
             gq.Queue.Enqueue(s);
 
             await context.Channel.SendMessageAsync(embed: songEmbed.Build());
@@ -90,14 +92,14 @@ namespace OscarBot.Services
 
         private void AddSkip(ShardedCommandContext context, Skip s)
         {
-            var gq = GetGuildQueue(context);
-            gq.Skipped.Add(s);
+            var gq = GetQueueForGuild(context);
+            gq.Skips.Add(s);
         }
 
         private void RemoveAllSkips(ShardedCommandContext context)
         {
-            var gq = GetGuildQueue(context);
-            gq.Skipped.RemoveAll(x => x.UserId >= 0);
+            var gq = GetQueueForGuild(context);
+            gq.Skips.RemoveAll(x => x.UserId >= 0);
         }
 
         public async Task PlayAsync(ShardedCommandContext context, Song s)
@@ -121,7 +123,6 @@ namespace OscarBot.Services
             await player.TextChannel.SendMessageAsync(embed: GenerateNowPlaying(s).Build());
 
             await player.PlayAsync(s);
-            player.TrackEnd += TrackEnd;
         }
 
         public async Task SkipAsync(ShardedCommandContext context)
@@ -133,7 +134,7 @@ namespace OscarBot.Services
             var users = GetSkips(context);
             if (users.Where(x => x.UserId == currUser.Id).Any()) return;
 
-            var queue = GetGuildQueue(context).Queue;
+            var queue = GetQueueForGuild(context).Queue;
             var currPlaying = queue.First();
 
             AddSkip(context, new Skip { SongUrl = currPlaying.URL, UserId = currUser.Id });
@@ -270,7 +271,7 @@ namespace OscarBot.Services
             return songEmbed;
         }
 
-        private async Task TrackEnd(AudioPlayer player, Song oldSong, string reason)
+        private async Task TrackEnd(AudioPlayer player, string reason)
         {
             if (reason != "finished") return;
             
@@ -303,7 +304,7 @@ namespace OscarBot.Services
                 return;
             }
 
-            await PlayAsync(player.VoiceChannel.GuildId, queue.First());
+            await PlayAsync(player.VoiceChannel.GuildId, queue.Peek());
         }
     }
 }

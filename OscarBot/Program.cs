@@ -56,7 +56,7 @@ namespace OscarBot
                 .AddSingleton<InteractiveService>()
                 .AddSingleton<ImageService>()
                 .AddSingleton<MusicService>()
-                .AddSingleton<AudioClient>()
+                .AddSingleton<AudioService>()
                 .AddDbContext<EntityContext>()
                 .BuildServiceProvider();
 

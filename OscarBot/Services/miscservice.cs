@@ -106,7 +106,7 @@ namespace OscarBot.Services
 
             var globals = new Globals
             {
-                Client = context.Client,
+                Client = _client,
                 Context = context,
                 Guild = context.Guild,
                 Channel = context.Channel,
@@ -115,7 +115,7 @@ namespace OscarBot.Services
                 Console = new FakeConsole(sb),
                 _db = _db,
                 _misc = this,
-                _audio = _services.GetService<AudioClient>(),
+                _audio = _services.GetService<AudioService>(),
                 Random = _random,
                 _img = _img
             };
@@ -177,6 +177,11 @@ namespace OscarBot.Services
                 description += $"```{r.MakeString()}```";
                 tostringed = r.MakeString();
             }
+            else if (result is IReadOnlyCollection<object> x)
+            {
+                description += $"```{x.MakeString()}```";
+                tostringed = x.MakeString();
+            }
             else if (result == null || string.IsNullOrEmpty(result.ToString()))
                 description += $"``` ```";
             else if (tostringed.Length > 1000)
@@ -190,6 +195,8 @@ namespace OscarBot.Services
             string footer = "";
             if (result is ICollection coll)
                 footer += $"Collection has {coll.Count} members • ";
+            else if (result is IReadOnlyCollection<object> colle)
+                footer += $"Collection has {colle.Count} members • ";
 
             footer += $"Return type: {(result == null ? "null" : result.GetType().ToString())} • took {s.ElapsedTicks / 10000d} ms to compile and {c.ElapsedTicks / 10000d} ms to execute";
 

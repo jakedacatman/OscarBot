@@ -20,7 +20,7 @@ namespace OscarBot.Classes
         public MiscService _misc { get; internal set; }
         public FakeConsole Console { get; internal set; }
         public Random Random { get; internal set; }
-        public AudioClient _audio { get; internal set; }
+        public AudioService _audio { get; internal set; }
         public ImageService _img { get; set; }
         public string[] Imports { get; internal set; } = new string[]
         {
