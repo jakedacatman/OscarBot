@@ -86,14 +86,16 @@ namespace OscarBot.Classes
                 await Task.WhenAny(promise.Task, promiseTimeout);
                 _ffmpeg.OutputDataReceived -= AwaitFFMpegOutput;
 
+                Console.WriteLine($"ffmpeg started in guild {GuildId}");
+
                 try
                 {
                     while (!_isskipped)
                     {
-                        MemoryUsage = _ffmpeg.PrivateMemorySize64 / (1024 * 1024);
-                        var wasRead = await fromffmpeg.ReadAsync(buffer, 0, buffer.Length);
+                        MemoryUsage = _ffmpeg.PeakWorkingSet64;
+                        var wasRead = await fromffmpeg.ReadAsync(buffer, 0, bufferSize);
 
-                        if (buffer.Length == 0) break;
+                        if (wasRead == 0) break;
 
                         while (IsPaused)
                             await Task.Delay(10);

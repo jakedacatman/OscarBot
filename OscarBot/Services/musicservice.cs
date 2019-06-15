@@ -110,7 +110,7 @@ namespace OscarBot.Services
 
             var fields = new List<EmbedFieldBuilder>()
             {
-                new EmbedFieldBuilder().WithName("**Memory usage**").WithValue($"{s.MemoryUsage} mb").WithIsInline(false),
+                new EmbedFieldBuilder().WithName("**Memory usage**").WithValue($"{Math.Round(s.MemoryUsage / (1024d * 1024d), 5)} mb").WithIsInline(false),
                 new EmbedFieldBuilder().WithName("**Playing players:**").WithValue(s.PlayingPlayers).WithIsInline(true),
                 new EmbedFieldBuilder().WithName("**Songs queued**").WithValue(s.SongsQueued).WithIsInline(true),
             };

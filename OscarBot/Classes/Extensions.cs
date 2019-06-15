@@ -68,7 +68,16 @@ namespace OscarBot.Classes
                 else if (value is IReadOnlyCollection<object> x)
                     toAppend += $"{thing.Name}:\n  {x.MakeString(level + 1)}";
                 else
-                    toAppend += $"{thing.Name}: {value ?? "null"}";
+                {
+                    string valueAsString = null;
+                    if (value != null)
+                    {
+                        var tostring = value.ToString();
+                        if (tostring.Length >= 50) valueAsString = tostring.Substring(0, 50) + "...";
+                        else valueAsString = tostring;
+                    }
+                    toAppend += $"{thing.Name}: {valueAsString ?? "null"}";
+                }
 
                 toAppend += ",\n";
 

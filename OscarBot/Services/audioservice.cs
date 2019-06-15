@@ -54,6 +54,8 @@ namespace OscarBot.Services
 
         public async Task<AudioPlayer> JoinAsync(IVoiceChannel voiceChannel, ISocketMessageChannel textChannel)
         {
+            await voiceChannel.ConnectAsync(true);
+            await voiceChannel.DisconnectAsync();
             var client = await voiceChannel.ConnectAsync(true);
             var player = new AudioPlayer(voiceChannel.GuildId, textChannel, voiceChannel, client, this, _client);
             players.Add(player);
