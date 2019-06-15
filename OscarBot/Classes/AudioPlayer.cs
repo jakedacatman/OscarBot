@@ -55,6 +55,7 @@ namespace OscarBot.Classes
                 CreateNoWindow = true,
                 UseShellExecute = false
             };
+            Console.WriteLine($"starting ffmpeg in guild {GuildId}");
             return Process.Start(ffmpeg);
         }
 
@@ -62,17 +63,10 @@ namespace OscarBot.Classes
         {
             try
             {
-                Volume = 100;
-                _isskipped = false;
-                IsPlaying = true;
-                IsPaused = false;
-                CurrentSong = s;
-                _didPlay = false;
-                CurrentPosition = TimeSpan.FromMilliseconds(0);
-                wasSent = 0;
+                Reset(true, false, false, s);
 
                 _ffmpeg = StartFFMpeg(s.AudioURL);
-                await Task.Delay(2000);
+                await Task.Delay(5000);
 
                 var buffer = new byte[bufferSize];
 
@@ -85,6 +79,8 @@ namespace OscarBot.Classes
                         var wasRead = await fromffmpeg.ReadAsync(buffer, 0, buffer.Length);
                         //Console.WriteLine($"read {wasRead} bytes");
 
+                        if (buffer.Length == 0) break;
+
                         while (IsPaused)
                             await Task.Delay(10);
 
@@ -94,8 +90,6 @@ namespace OscarBot.Classes
                         //Console.WriteLine($"wrote {buffer.Length} bytes");
                         wasSent += buffer.Length;
                         CurrentPosition = TimeSpan.FromSeconds(wasSent / (bufferSize * 50));
-
-                        if (buffer.Length == 0 || wasRead == 0) break;
                     }
                 }
                 catch { }
@@ -104,22 +98,28 @@ namespace OscarBot.Classes
                     var timeout = Task.Delay(2000);
                     await Task.WhenAny(todiscord.FlushAsync(), timeout);
                 }
-                
-                IsPlaying = false;
-                CurrentSong = null;
-                _didPlay = true;
-                _ffmpeg.Dispose();
-                wasSent = 0;
+
+                Reset(false, true);
             }
             catch (Exception e)
             {
                 Console.WriteLine(e.ToString());
-                IsPlaying = false;
-                CurrentSong = null;
-                _didPlay = true;
-                _ffmpeg.Dispose();
-                wasSent = 0;
+                Reset(false, true);
             }
+        }
+
+        private void Reset(bool isPlaying, bool didPlay, bool dispose = true, Song s = null)
+        {
+            Volume = 100;
+            CurrentPosition = TimeSpan.FromMilliseconds(0);
+            IsPlaying = isPlaying;
+            CurrentSong = s;
+            _didPlay = didPlay;
+            wasSent = 0;
+            if (dispose)
+                _ffmpeg.Dispose();
+
+            _didPlay = false;
         }
 
         //modified from https://github.com/tigertub/nadeendko/blob/423e219be1f975101cc954e22dd07416d21b4002/NadekoBot/Modules/Music/Classes/Song.cs
@@ -153,7 +153,7 @@ namespace OscarBot.Classes
         public void Skip()
         {
             _isskipped = true;
-            IsPlaying = false;
+            _didPlay = true;
         }
     }
 }

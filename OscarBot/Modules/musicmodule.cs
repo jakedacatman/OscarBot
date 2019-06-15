@@ -64,10 +64,12 @@ namespace OscarBot.Modules
                         if (obj.SelectToken("pageInfo").SelectToken("totalResults").Value<int>() == 0) return;
                         var songUrl = $"https://www.youtube.com/watch?v={id}";
 
+                        var pleasewait = await ReplyAsync($"Searching for your track... <a:search:588920003374350356>");
+
                         s = new Song
                         {
                             URL = songUrl,
-                            AudioURL = await _audio.GetAudioUrlAsync(songUrl),
+                            AudioURL = await _audio.GetAudioUrlFromIdAsync(id),
                             QueuerId = Context.User.Id,
                             ChannelId = Context.Channel.Id,
                             GuildId = Context.Guild.Id,
@@ -77,6 +79,7 @@ namespace OscarBot.Modules
                             Thumbnail = obj.SelectToken("items").First.SelectToken("snippet.thumbnails.high.url").Value<string>()
                         };
 
+                        await pleasewait.DeleteAsync();
                         await _ms.AddSongAsync(Context, s);
                     }
                 }
@@ -131,7 +134,7 @@ namespace OscarBot.Modules
                         s = new Song
                         {
                             URL = songUrl,
-                            AudioURL = await _audio.GetAudioUrlAsync(songUrl),
+                            AudioURL = await _audio.GetAudioUrlFromIdAsync(id),
                             QueuerId = Context.User.Id,
                             ChannelId = Context.Channel.Id,
                             GuildId = Context.Guild.Id,
@@ -220,7 +223,7 @@ namespace OscarBot.Modules
                     .WithTitle("Now playing:")
                     .WithThumbnailUrl(s.Thumbnail)
                     .AddField("**Title:**", s.Name, false)
-                    .AddField("**Position:**", $"[{ string.Join("", Enumerable.Repeat("\\|", (int)signNo)) + string.Join("", Enumerable.Repeat(".", totalLen - (int)signNo))}]\n[{currPos:g}/{len:g}]", false)
+                    .AddField("**Position:**", $"[{ string.Join("", Enumerable.Repeat("\\|", (int)signNo)) + string.Join("", Enumerable.Repeat(".", totalLen - (int)signNo))}]\n({currPos:g}/{len:g}) ", false)
                     .AddField("**Author:**", s.Author, true)
                     .AddField("**Added at:**", $"{player.CurrentSong.AddedAt:g}", true)
                     .AddField("**URL:**", $"<{s.URL}>", false)

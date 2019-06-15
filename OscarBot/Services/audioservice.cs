@@ -8,6 +8,8 @@ using Discord;
 using Discord.Audio;
 using Discord.WebSocket;
 using OscarBot.Classes;
+using YoutubeExplode;
+using YoutubeExplode.Models;
 
 namespace OscarBot.Services
 {
@@ -70,7 +72,7 @@ namespace OscarBot.Services
                 await Task.Delay(500);
             }
         }
-        
+        /*
         private string GetAudioUrl(string url)
         {
             var ytdl = new ProcessStartInfo
@@ -94,12 +96,18 @@ namespace OscarBot.Services
             var query = received.Where(x => x.Contains("mime=audio"));
             var toReturn = query.Any() ? query.First() : received.LastOrDefault();
             return toReturn;
+        }*/
+        private async Task<string> GetAudioUrlFromId(string id)
+        {
+            var cl = new YoutubeClient();
+
+            return (await cl.GetVideoMediaStreamInfosAsync(id)).Audio.OrderByDescending(x => x.Bitrate).First().Url;
         }
 
-        public async Task<string> GetAudioUrlAsync(string url)
+        public async Task<string> GetAudioUrlFromIdAsync(string id)
         {
             string result = null;
-            await Task.Run(() => result = GetAudioUrl(url));
+            await Task.Run(async () => result = await GetAudioUrlFromId(id));
             return result;
         }
     }
