@@ -51,7 +51,10 @@ namespace OscarBot.Classes
             "System.Numerics",
             "Microsoft.EntityFrameworkCore",
             "Microsoft.Extensions.DependencyInjection",
-            "System.IO"
+            "System.IO",
+            "YoutubeExplode",
+            "YoutubeExplode.Models",
+            "YoutubeExplode.Models.MediaStreams"
         };
     }
 }

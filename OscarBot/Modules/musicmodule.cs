@@ -65,11 +65,13 @@ namespace OscarBot.Modules
                         var songUrl = $"https://www.youtube.com/watch?v={id}";
 
                         var pleasewait = await ReplyAsync($"Searching for your track... <a:search:588920003374350356>");
+                        var streaminfo = await _audio.GetStreamInfo(id);
 
                         s = new Song
                         {
                             URL = songUrl,
-                            AudioURL = await _audio.GetAudioUrlFromIdAsync(id),
+                            AudioURL = streaminfo.Url,
+                            Bitrate = streaminfo.Bitrate,
                             QueuerId = Context.User.Id,
                             ChannelId = Context.Channel.Id,
                             GuildId = Context.Guild.Id,
@@ -130,11 +132,13 @@ namespace OscarBot.Modules
                         var songUrl = $"https://www.youtube.com/watch?v={id}";
 
                         var pleasewait = await ReplyAsync($"Searching for your track... <a:search:588920003374350356>");
+                        var streaminfo = await _audio.GetStreamInfo(id);
 
                         s = new Song
                         {
                             URL = songUrl,
-                            AudioURL = await _audio.GetAudioUrlFromIdAsync(id),
+                            AudioURL = streaminfo.Url,
+                            Bitrate = streaminfo.Bitrate,
                             QueuerId = Context.User.Id,
                             ChannelId = Context.Channel.Id,
                             GuildId = Context.Guild.Id,

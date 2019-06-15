@@ -9,7 +9,7 @@ using Discord.Audio;
 using Discord.WebSocket;
 using OscarBot.Classes;
 using YoutubeExplode;
-using YoutubeExplode.Models;
+using YoutubeExplode.Models.MediaStreams;
 
 namespace OscarBot.Services
 {
@@ -97,17 +97,15 @@ namespace OscarBot.Services
             var toReturn = query.Any() ? query.First() : received.LastOrDefault();
             return toReturn;
         }*/
-        private async Task<string> GetAudioUrlFromId(string id)
+
+        public async Task<AudioStreamInfo> GetStreamInfo(string id)
         {
+            AudioStreamInfo result = null;
+            await Task.Run(async () =>
+            {
             var cl = new YoutubeClient();
-
-            return (await cl.GetVideoMediaStreamInfosAsync(id)).Audio.OrderByDescending(x => x.Bitrate).First().Url;
-        }
-
-        public async Task<string> GetAudioUrlFromIdAsync(string id)
-        {
-            string result = null;
-            await Task.Run(async () => result = await GetAudioUrlFromId(id));
+                result = (await cl.GetVideoMediaStreamInfosAsync(id)).Audio.OrderByDescending(x => x.Bitrate).First();
+            });
             return result;
         }
     }

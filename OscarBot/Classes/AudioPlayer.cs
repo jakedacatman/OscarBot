@@ -23,6 +23,7 @@ namespace OscarBot.Classes
         public bool IsPaused { get; private set; }
         public Song CurrentSong { get; private set; }
         public TimeSpan CurrentPosition { get; private set; }
+        public long MemoryUsage { get; private set; }
 
         internal bool _didPlay = false;
         private bool _isskipped = false;
@@ -66,18 +67,17 @@ namespace OscarBot.Classes
                 Reset(true, false, false, s);
 
                 _ffmpeg = StartFFMpeg(s.AudioURL);
-                await Task.Delay(5000);
 
                 var buffer = new byte[bufferSize];
 
                 var fromffmpeg = new BufferedStream(_ffmpeg.StandardOutput.BaseStream, bufferSize);
-                var todiscord = _audioClient.CreatePCMStream(AudioApplication.Mixed);
+                var todiscord = _audioClient.CreatePCMStream(AudioApplication.Music, (int)Math.Round(s.Bitrate / 100d), 1);
                 try
                 {
                     while (!_isskipped)
                     {
+                        MemoryUsage = _ffmpeg.PrivateMemorySize64 / (1024 * 1024);
                         var wasRead = await fromffmpeg.ReadAsync(buffer, 0, buffer.Length);
-                        //Console.WriteLine($"read {wasRead} bytes");
 
                         if (buffer.Length == 0) break;
 
@@ -87,7 +87,7 @@ namespace OscarBot.Classes
                         buffer = SetVolume(buffer, Volume);
 
                         await todiscord.WriteAsync(buffer, 0, wasRead);
-                        //Console.WriteLine($"wrote {buffer.Length} bytes");
+
                         wasSent += buffer.Length;
                         CurrentPosition = TimeSpan.FromSeconds(wasSent / (bufferSize * 50));
                     }

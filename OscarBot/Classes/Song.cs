@@ -14,6 +14,7 @@ namespace OscarBot.Classes
         public string Author { get; set; }
         public string Thumbnail { get; set; }
         public DateTime AddedAt { get; set; } = DateTime.UtcNow;
+        public long Bitrate { get; set; }
     }
 
     public class Skip
