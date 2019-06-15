@@ -6,6 +6,7 @@ using System.Text;
 using Discord;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
 namespace OscarBot.Classes
 {
@@ -51,6 +52,7 @@ namespace OscarBot.Classes
             if (t.GetType().IsValueType) return t.ToString();
 
             StringBuilder sb = new StringBuilder();
+
             var properties = t.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic).Where(x => x.GetIndexParameters().Length == 0);
             foreach (var thing in properties)
             {
@@ -72,6 +74,35 @@ namespace OscarBot.Classes
 
                 sb.Append(toAppend);
             }
+            
+            /*var methods = t.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic);
+            foreach (var thing in methods)
+            {
+                if (thing == null)
+                    continue;
+
+                var toAppend = "  ".RepeatString(level + 1);
+
+                if (thing.IsPublic) toAppend += $"public ";
+                if (thing.IsPrivate) toAppend += $"private ";
+                if (thing.IsAssembly) toAppend += "internal ";
+                if (thing.IsStatic) toAppend += $"static ";
+                if (thing.GetCustomAttribute(typeof(AsyncStateMachineAttribute)) != null) toAppend += $"async ";
+                if (thing.IsAbstract) toAppend += $"abstract ";
+                if (thing.IsVirtual) toAppend += $"virtual ";
+                if (thing.IsFinal) toAppend += $"final ";
+
+                toAppend += thing.ReturnType.ToString() + " ";
+
+                toAppend += thing.Name;
+
+                if (thing.IsGenericMethod) toAppend += "<t>";
+
+                toAppend += ",\n";
+
+                sb.Append(toAppend);
+            }*/
+
             var str = sb.ToString();
             if (str.Length == 0) return $"{t.ToString()} (no properties)";
             return $"[\n{str.Substring(0, str.Length - 2)}\n{"  ".RepeatString(level)}]";
