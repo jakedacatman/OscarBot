@@ -111,6 +111,7 @@ namespace OscarBot.Services
                 Guild = context.Guild,
                 Channel = context.Channel,
                 User = context.User as SocketGuildUser,
+                Services = _services,
                 Message = context.Message,
                 Console = new FakeConsole(sb),
                 _db = _db,
@@ -182,9 +183,12 @@ namespace OscarBot.Services
                 description += $"```{x.MakeString()}```";
                 tostringed = x.MakeString();
             }
-            else if (result == null || string.IsNullOrEmpty(result.ToString()))
-                description += $"``` ```";
-            else if (tostringed.Length > 1000)
+            else if (string.IsNullOrEmpty(result.ToString()))
+                tostringed = " ";
+            else
+                tostringed = result.MakeString();
+            
+            if (tostringed.Length > 1000)
                 description += $"Here is a **[link]({await UploadToBisogaAsync(tostringed)})** to the result.";
             else
                 description += $"```{tostringed}```";

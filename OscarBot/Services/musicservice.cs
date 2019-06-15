@@ -15,6 +15,8 @@ namespace OscarBot.Services
 {
     public class MusicService
     {
+        public int SongsQueued { get { return _queues.Select(x => x.Value.Queue.Count).Sum(); } }
+
         private readonly DiscordShardedClient _client;
         private readonly MiscService _misc;
         private readonly AudioService _audio;
@@ -100,6 +102,25 @@ namespace OscarBot.Services
         {
             var gq = GetQueueForGuild(context);
             gq.Skips.RemoveAll(x => x.UserId >= 0);
+        }
+
+        public EmbedBuilder GetStats()
+        {
+            var s = new MusicStats(_audio.MemoryUsage, _audio.PlayingPlayers, SongsQueued);
+
+            var fields = new List<EmbedFieldBuilder>()
+            {
+                new EmbedFieldBuilder().WithName("**Memory usage**").WithValue($"{s.MemoryUsage} mb").WithIsInline(false),
+                new EmbedFieldBuilder().WithName("**Playing players:**").WithValue(s.PlayingPlayers).WithIsInline(true),
+                new EmbedFieldBuilder().WithName("**Songs queued**").WithValue(s.SongsQueued).WithIsInline(true),
+            };
+
+            return new EmbedBuilder()
+                .WithTitle($"Music Stats")
+                .WithColor(_misc.RandomColor())
+                .WithFields(fields)
+                .WithCurrentTimestamp()
+                .WithThumbnailUrl(_client.CurrentUser.GetAvatarUrl(size: 512));
         }
 
         public async Task PlayAsync(ShardedCommandContext context, Song s)

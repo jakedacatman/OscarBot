@@ -20,6 +20,9 @@ namespace OscarBot.Services
 
         private List<AudioPlayer> players = new List<AudioPlayer>();
 
+        public int PlayingPlayers { get { return players.Where(x => x.IsPlaying).Count(); } }
+        public long MemoryUsage { get { return players.Where(x => x.IsPlaying).Select(x => x.MemoryUsage).Sum(); } }
+
         private bool _isRunning = false;
 
         public AudioService(DiscordShardedClient client, MiscService misc)

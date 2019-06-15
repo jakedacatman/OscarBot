@@ -43,6 +43,7 @@ namespace OscarBot.Classes
             _audioClient = audioClient;
             _client = client;
             _as = a_s;
+            MemoryUsage = 0;
         }
 
         private Process StartFFMpeg(string url)
@@ -71,7 +72,20 @@ namespace OscarBot.Classes
                 var buffer = new byte[bufferSize];
 
                 var fromffmpeg = new BufferedStream(_ffmpeg.StandardOutput.BaseStream, bufferSize);
-                var todiscord = _audioClient.CreatePCMStream(AudioApplication.Music, (int)Math.Round(s.Bitrate / 100d), 1);
+                var todiscord = _audioClient.CreatePCMStream(AudioApplication.Music);
+
+                var promise = new TaskCompletionSource<bool>();
+                var promiseTimeout = Task.Delay(10000);
+
+                void AwaitFFMpegOutput(object sender, DataReceivedEventArgs e)
+                {
+                    promise.SetResult(true);
+                }
+
+                _ffmpeg.OutputDataReceived += AwaitFFMpegOutput;
+                await Task.WhenAny(promise.Task, promiseTimeout);
+                _ffmpeg.OutputDataReceived -= AwaitFFMpegOutput;
+
                 try
                 {
                     while (!_isskipped)
@@ -99,17 +113,18 @@ namespace OscarBot.Classes
                     await Task.WhenAny(todiscord.FlushAsync(), timeout);
                 }
 
-                Reset(false, true);
+                Reset(false, true, true);
             }
             catch (Exception e)
             {
                 Console.WriteLine(e.ToString());
-                Reset(false, true);
+                Reset(false, true, true);
             }
         }
 
-        private void Reset(bool isPlaying, bool didPlay, bool dispose = true, Song s = null)
+        private void Reset(bool isPlaying, bool didPlay, bool dispose = false, Song s = null)
         {
+            MemoryUsage = 0;
             Volume = 100;
             CurrentPosition = TimeSpan.FromMilliseconds(0);
             IsPlaying = isPlaying;
@@ -117,11 +132,7 @@ namespace OscarBot.Classes
             _didPlay = didPlay;
             wasSent = 0;
             if (dispose)
-            {
-                if (!_ffmpeg.HasExited)
-                    _ffmpeg.Kill();
                 _ffmpeg.Dispose();
-            }
 
             _didPlay = false;
         }

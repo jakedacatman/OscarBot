@@ -398,6 +398,7 @@
     <Compile Include="Classes\Models\ModerationAction.cs" />
     <Compile Include="Classes\Models\Prefix.cs" />
     <Compile Include="Classes\CodeExitException.cs" />
+    <Compile Include="Classes\MusicStats.cs" />
     <Compile Include="Classes\QueueAndSkips.cs" />
     <Compile Include="Classes\Song.cs" />
     <Compile Include="Modules\imagemodule.cs" />

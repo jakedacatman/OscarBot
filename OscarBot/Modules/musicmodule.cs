@@ -39,6 +39,19 @@ namespace OscarBot.Modules
             _db = db;
             _services = services;
         }
+        [Command("stats")]
+        [Summary("Gets the music stats.")]
+        public async Task StatsCmd()
+        {
+            try
+            {
+                await ReplyAsync(embed: _ms.GetStats().Build());
+            }
+            catch (Exception e)
+            {
+                await ReplyAsync(embed: (await _misc.GenerateErrorMessage(e)).Build());
+            }
+        }
 
         [Command("add")]
         [Alias("play")]
@@ -220,14 +233,14 @@ namespace OscarBot.Modules
 
                 var totalLen = 40;
                 var interval = Math.Round(len.TotalMilliseconds / totalLen, 2);
-                var signNo = Math.Round(currPos.TotalMilliseconds / interval, 2);
+                var signNo = (int)Math.Round(currPos.TotalMilliseconds / interval, 2);
 
                 EmbedBuilder embed = new EmbedBuilder()
                     .WithColor(_misc.RandomColor())
                     .WithTitle("Now playing:")
                     .WithThumbnailUrl(s.Thumbnail)
                     .AddField("**Title:**", s.Name, false)
-                    .AddField("**Position:**", $"[{ string.Join("", Enumerable.Repeat("\\|", (int)signNo)) + string.Join("", Enumerable.Repeat(".", totalLen - (int)signNo))}]\n({currPos:g}/{len:g}) ", false)
+                    .AddField("**Position:**", $"[{ string.Join("", Enumerable.Repeat("\\|", signNo)) + string.Join("", Enumerable.Repeat(".", totalLen - signNo))}]\n({currPos:g}/{len:g}) ", false)
                     .AddField("**Author:**", s.Author, true)
                     .AddField("**Added at:**", $"{player.CurrentSong.AddedAt:g}", true)
                     .AddField("**URL:**", $"<{s.URL}>", false)
