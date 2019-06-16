@@ -23,19 +23,15 @@ namespace OscarBot.Services
     public class MiscService
     {
         private readonly DiscordShardedClient _client;
-        private readonly DbService _db;
         private IServiceProvider _services;
         private readonly Random _random;
-        private readonly ImageService _img;
         private List<int> ids = new List<int>();
 
-        public MiscService(DiscordShardedClient client, DbService db, IServiceProvider services, Random random, ImageService img)
+        public MiscService(DiscordShardedClient client, IServiceProvider services, Random random)
         {
             _client = client;
-            _db = db;
             _services = services;
             _random = random;
-            _img = img;
         }
 
         private readonly string[] errorMessages = new string[]
@@ -106,25 +102,26 @@ namespace OscarBot.Services
 
             var globals = new Globals
             {
-                Client = _client,
-                Context = context,
-                Guild = context.Guild,
-                Channel = context.Channel,
-                User = context.User as SocketGuildUser,
-                Services = _services,
-                Message = context.Message,
+                _client = _client,
+                _context = context,
+                _guild = context.Guild,
+                _channel = context.Channel,
+                _user = context.User as SocketGuildUser,
+                _services = _services,
+                _message = context.Message,
                 Console = new FakeConsole(sb),
-                _db = _db,
+                _db = _services.GetService<DbService>(),
                 _misc = this,
                 _audio = _services.GetService<AudioService>(),
                 Random = _random,
-                _img = _img
+                _img = _services.GetService<ImageService>(),
+                _ms = _services.GetService<MusicService>(),
+                _commands = _services.GetService<CommandService>()
             };
             var options = ScriptOptions.Default
                 .AddReferences(assemblies)
                 .AddImports(globals.Imports)
                 .WithAllowUnsafe(true)
-                .WithCheckOverflow(true)
                 .WithLanguageVersion(LanguageVersion.CSharp8);
 
             Stopwatch s = Stopwatch.StartNew();
@@ -171,20 +168,12 @@ namespace OscarBot.Services
                  description = $"in: ```cs\n{code}```\nout: \n";
             else
                 description = $"in: **[input]({await UploadToBisogaAsync(code)})**\nout: \n";
-            string tostringed = result == null ? "" : result.ToString();
+            string tostringed = result == null ? " " : result.ToString();
 
             if (result is ICollection r)
-            {
-                description += $"```{r.MakeString()}```";
                 tostringed = r.MakeString();
-            }
             else if (result is IReadOnlyCollection<object> x)
-            {
-                description += $"```{x.MakeString()}```";
                 tostringed = x.MakeString();
-            }
-            else if (string.IsNullOrEmpty(result.ToString()))
-                tostringed = " ";
             else
                 tostringed = result.MakeString();
             
@@ -207,7 +196,7 @@ namespace OscarBot.Services
 
             var em = new EmbedBuilder()
                     .WithFooter(footer)
-                    .WithDescription(description.Length < 2048 ? description : $"in: ```cs\n{code}```\n \nout: **Output was too long for the embed, so here's a [link]({await UploadToBisogaAsync(tostringed)}) to the result:**")
+                    .WithDescription(description)
                     .WithColor(Color.Green);
 
             await msg.DeleteAsync();

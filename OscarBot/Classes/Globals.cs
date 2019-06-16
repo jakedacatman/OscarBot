@@ -8,20 +8,21 @@ namespace OscarBot.Classes
 {
     public class Globals
     {
-        public ShardedCommandContext Context { get; internal set; }
-        public DiscordShardedClient Client { get; internal set; }
-        public SocketGuildUser User { get; internal set; }
-        public SocketGuild Guild { get; internal set; }
-        public ISocketMessageChannel Channel { get; internal set; }
-        public SocketUserMessage Message { get; internal set; }
-        public CommandService Commands { get; internal set; }
-        public IServiceProvider Services { get; internal set; }
+        public ShardedCommandContext _context { get; internal set; }
+        public DiscordShardedClient _client { get; internal set; }
+        public SocketGuildUser _user { get; internal set; }
+        public SocketGuild _guild { get; internal set; }
+        public ISocketMessageChannel _channel { get; internal set; }
+        public SocketUserMessage _message { get; internal set; }
+        public CommandService _commands { get; internal set; }
+        public IServiceProvider _services { get; internal set; }
         public DbService _db { get; internal set; }
         public MiscService _misc { get; internal set; }
         public FakeConsole Console { get; internal set; }
         public Random Random { get; internal set; }
         public AudioService _audio { get; internal set; }
-        public ImageService _img { get; set; }
+        public ImageService _img { get; internal set; }
+        public MusicService _ms { get; internal set; }
         public string[] Imports { get; internal set; } = new string[]
         {
             "System",

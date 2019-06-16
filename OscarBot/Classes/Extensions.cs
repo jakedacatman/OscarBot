@@ -72,9 +72,11 @@ namespace OscarBot.Classes
                     string valueAsString = null;
                     if (value != null)
                     {
-                        var tostring = value.ToString();
-                        if (tostring.Length >= 50) valueAsString = tostring.Substring(0, 50) + "...";
-                        else valueAsString = tostring;
+                        var tostring = value.MakeString();
+                        if (tostring.Length >= 50)
+                            valueAsString = tostring.Substring(0, 50) + "...";
+                        else
+                            valueAsString = tostring;
                     }
                     toAppend += $"{thing.Name}: {valueAsString ?? "null"}";
                 }
