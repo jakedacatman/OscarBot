@@ -33,7 +33,7 @@ namespace OscarBot.Modules
 
         [Command("ping")]
         [Summary("Pings the bot and returns the current shard's latency (or all if using the parameter -a).")]
-        public async Task PingCommand([Summary("Use --all here in order to view the latency of all shards.")]string param = null)
+        public async Task PingCommand([Summary("Use -a here in order to view the latency of all shards.")]string param = null)
         {
             try
             {
@@ -125,7 +125,7 @@ namespace OscarBot.Modules
             try
             {
                 var cmds = _commands.Commands.Where(x => x.Name == command);
-                var aliases =  _commands.Commands.Where(x => x.Aliases.Where(y => y == command).Any());
+                var aliases =  _commands.Commands.Where(x => x.Aliases.Any(y => y == command));
                 if (cmds.Any())
                 {
                     var firstCmd = cmds.First();
@@ -215,6 +215,7 @@ namespace OscarBot.Modules
                 await ReplyAsync(embed: (await _misc.GenerateErrorMessage(e)).Build());
             }
         }
+
         [Command("logout")]
         [RequireOwner]
         public async Task LogoutCmd()
@@ -226,6 +227,23 @@ namespace OscarBot.Modules
                 await _client.LogoutAsync();
                 _client.Dispose();
                 Environment.Exit(0);
+            }
+            catch (Exception e)
+            {
+                await ReplyAsync(embed: (await _misc.GenerateErrorMessage(e)).Build());
+            }
+        }
+
+        [Command("restart")]
+        [RequireOwner]
+        public async Task RestartCmd()
+        {
+            try
+            {
+                await Context.Message.AddReactionAsync(new Emoji("✅"));
+                await _client.LogoutAsync();
+                _client.Dispose();
+                Environment.Exit(1);
             }
             catch (Exception e)
             {

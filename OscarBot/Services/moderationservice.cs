@@ -43,7 +43,7 @@ namespace OscarBot.Services
             foreach (var g in _client.Guilds)
             {
                 var actions = await GetModerationActionsAsync(g.Id);
-                if (actions.Actions.Any()) _actions.Add(actions);
+                if (actions.Any()) _actions.Add(actions);
             }
         }
 
@@ -58,10 +58,10 @@ namespace OscarBot.Services
                     await Task.Delay(1000);
 
                     await UpdateActions();
-                    if (_actions.Any())
+                    if (_actions.Where(x => x.Any()).Any())
                     {
                         Console.WriteLine($"{DateTime.Now,19} [{"Verbose",8}] ModeratorService: Attempting to revert actions.");
-                        foreach (var action in _actions.SelectMany(x => x.Actions.Where(y => DateTime.UtcNow >= y.ReverseAfter)))
+                        foreach (var action in _actions.SelectMany(x => x.Where(y => DateTime.UtcNow >= y.ReverseAfter)))
                         {
                             var guild = _client.GetGuild(action.GuildId);
                             var user = guild.GetUser(action.UserId);
@@ -104,11 +104,11 @@ namespace OscarBot.Services
                 var _db = scope.ServiceProvider.GetRequiredService<EntityContext>();
 
                 var c = _db.ModerationActions;
-                var query = c.Include(x => x.Actions).Where(x => x.GuildId == guildId);
+                var query = c.Include(x => x).Where(x => x.GuildId == guildId);
                 ModerationActionCollection actions;
-                if (query.Count() == 0)
+                if (!query.Any())
                 {
-                    actions = new ModerationActionCollection { GuildId = guildId, Actions = new List<ModerationAction>() };
+                    actions = new ModerationActionCollection { GuildId = guildId };
                     c.Add(actions);
                 }
                 else
@@ -125,15 +125,15 @@ namespace OscarBot.Services
                 var _db = scope.ServiceProvider.GetRequiredService<EntityContext>();
 
                 var actions = _db.ModerationActions;
-                var query = actions.Include(x => x.Actions).Where(x => x.GuildId == action.GuildId);
-                List<ModerationAction> list;
-                if (query.Count() == 0)
+                var query = actions.Include(x => x).Where(x => x.GuildId == action.GuildId);
+                ModerationActionCollection list;
+                if (!query.Any())
                 {
-                    list = new List<ModerationAction>();
-                    actions.Add(new ModerationActionCollection { GuildId = action.GuildId, Actions = list });
+                    list = new ModerationActionCollection { GuildId = action.GuildId };
+                    actions.Add(list);
                 }
                 else
-                    list = query.Single().Actions;
+                    list = query.Single();
 
                 list.Add(action);
                 return await _db.SaveChangesAsync();
@@ -147,16 +147,14 @@ namespace OscarBot.Services
 
                 var actions = _db.ModerationActions;
                 var query = actions.Where(x => x.GuildId == action.GuildId);
-                List<ModerationAction> list;
-                if (query.Count() == 0)
+                ModerationActionCollection list;
+                if (!query.Any())
                 {
-                    list = new List<ModerationAction>();
-                    actions.Add(new ModerationActionCollection { GuildId = action.GuildId, Actions = list });
+                    list = new ModerationActionCollection { GuildId = action.GuildId };
+                    actions.Add(list);
                 }
                 else
-                {
-                    list = query.Single().Actions;
-                }
+                    list = query.Single();
 
                 if (list.Contains(action))
                     list.Remove(action);
@@ -171,15 +169,15 @@ namespace OscarBot.Services
 
                 var actions = _db.ModerationActions;
                 var query = actions.Where(x => x.GuildId == user.Guild.Id);
-                List<ModerationAction> list;
-                if (query.Count() == 0)
+                ModerationActionCollection list;
+                if (!query.Any())
                 {
-                    list = new List<ModerationAction>();
-                    actions.Add(new ModerationActionCollection { GuildId = user.Guild.Id, Actions = list });
+                    list = new ModerationActionCollection { GuildId = user.Guild.Id };
+                    actions.Add(list);
                 }
                 else
                 {
-                    list = query.Single().Actions;
+                    list = query.Single();
                 }
 
                 list.RemoveAll(x => x.UserId == user.Id && x.Type == type);
@@ -195,11 +193,10 @@ namespace OscarBot.Services
                 IRole role;
 
                 if (guild.Roles.Any(x => x.Name == "Muted"))
-                    role = guild.Roles.FirstOrDefault(x => x.Name == "Muted");
+                    role = guild.Roles.First(x => x.Name == "Muted");
                 else
                 {
-                    OverwritePermissions Permissions = new OverwritePermissions(addReactions: PermValue.Deny, sendMessages: PermValue.Deny,
-                        attachFiles: PermValue.Deny, useExternalEmojis: PermValue.Deny, speak: PermValue.Deny);
+                    OverwritePermissions Permissions = new OverwritePermissions(addReactions: PermValue.Deny, sendMessages: PermValue.Deny, attachFiles: PermValue.Deny, useExternalEmojis: PermValue.Deny, speak: PermValue.Deny);
 
                     role = await guild.CreateRoleAsync("Muted", GuildPermissions.None, Color.Default);
 
@@ -242,7 +239,7 @@ namespace OscarBot.Services
         {
             try
             {
-                IRole role;
+                SocketRole role;
 
                 if (guild.Roles.Any(x => x.Name == "Muted"))
                     role = guild.Roles.FirstOrDefault(x => x.Name == "Muted");
@@ -257,8 +254,9 @@ namespace OscarBot.Services
 
                 return true;
             }
-            catch
+            catch (Exception e)
             {
+                Console.WriteLine(e);
                 return false;
             }
         }

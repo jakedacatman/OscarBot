@@ -30,6 +30,7 @@ namespace OscarBot.Classes
             "System.Collections.Generic",
             "System.Linq",
             "System.Text",
+            "System.Text.RegularExpressions",
             "System.Threading.Tasks",
             "Discord",
             "Discord.Commands",
@@ -55,7 +56,9 @@ namespace OscarBot.Classes
             "System.IO",
             "YoutubeExplode",
             "YoutubeExplode.Models",
-            "YoutubeExplode.Models.MediaStreams"
+            "YoutubeExplode.Models.MediaStreams",
+            "System.Drawing",
+            "System.Drawing.Imaging"
         };
     }
 }

@@ -153,7 +153,7 @@ namespace OscarBot.Services
 
             var currUser = (SocketGuildUser)context.User;
             var users = GetSkips(context);
-            if (users.Where(x => x.UserId == currUser.Id).Any()) return;
+            if (users.Any(x => x.UserId == currUser.Id)) return;
 
             var queue = GetQueueForGuild(context).Queue;
             var currPlaying = queue.First();

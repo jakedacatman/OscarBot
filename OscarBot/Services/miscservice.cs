@@ -136,12 +136,14 @@ namespace OscarBot.Services
                 return await GenerateErrorAsync(code, cErrors);
             }
 
+            /*
             if (code.WillExit(out string message))
             {
                 var ex = new CodeExitException(message, new Exception(message));
                 await msg.DeleteAsync();
                 return await GenerateErrorAsync(code, ex);
             }
+            */
 
             Stopwatch c = Stopwatch.StartNew();
             ScriptState<object> eval;
@@ -174,6 +176,8 @@ namespace OscarBot.Services
                 tostringed = r.MakeString();
             else if (result is IReadOnlyCollection<object> x)
                 tostringed = x.MakeString();
+            else if (result is string str)
+                tostringed = str;
             else
                 tostringed = result.MakeString();
             

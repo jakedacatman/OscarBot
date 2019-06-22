@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 
 namespace OscarBot.Classes
 {
+    // 'BitmapColor' overrides Object.Equals(object o) but does not override Object.GetHashCode()
+    #pragma warning disable CS0659
     public class BitmapColor
     {
         public byte R { get; }
@@ -27,5 +29,11 @@ namespace OscarBot.Classes
             B = b;
             A = 0;
         }
+        public override bool Equals(object obj)
+        {
+            if (!(obj is BitmapColor clr)) return false;
+            return clr.R == R && clr.G == G && clr.B == B && clr.A == A;
+        }
     }
+    #pragma warning restore CS0659
 }

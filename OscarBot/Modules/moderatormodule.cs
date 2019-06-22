@@ -74,7 +74,7 @@ namespace OscarBot.Modules
             try
             {
                 var sb = new StringBuilder();
-                foreach (var action in (await _ms.GetModerationActionsAsync(Context.Guild.Id)).Actions)
+                foreach (var action in (await _ms.GetModerationActionsAsync(Context.Guild.Id)))
                     sb.Append($"{action.Type.ToString()}\n");
 
                 var embed = new EmbedBuilder()
