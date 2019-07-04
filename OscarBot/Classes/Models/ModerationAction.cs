@@ -29,7 +29,7 @@ namespace OscarBot.Classes
     {
         [Key]
         public ulong GuildId { get; set; }
-        private List<ModerationAction> Actions { get; set; } = new List<ModerationAction>();
+        public List<ModerationAction> Actions { get; set; } = new List<ModerationAction>();
         public IEnumerator<ModerationAction> GetEnumerator() => Actions.GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => Actions.GetEnumerator();
 

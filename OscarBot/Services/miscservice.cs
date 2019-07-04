@@ -295,12 +295,19 @@ namespace OscarBot.Services
 
         public async Task<string> UploadToBisogaAsync(string stuffToUpload)
         {
-            using (WebClient cl = new WebClient())
+            try
             {
-                cl.Headers.Add(HttpRequestHeader.ContentType, "application/json");
-                var encoded = JsonConvert.SerializeObject(new Dictionary<string, string> { { "text", stuffToUpload } });
+                using (WebClient cl = new WebClient())
+                {
+                    cl.Headers.Add(HttpRequestHeader.ContentType, "application/json");
+                    var encoded = JsonConvert.SerializeObject(new Dictionary<string, string> { { "text", stuffToUpload } });
 
-                return await cl.UploadStringTaskAsync("https://bisoga.xyz/api/paste", encoded);
+                    return await cl.UploadStringTaskAsync("https://bisoga.xyz/api/paste", encoded);
+                }
+            }
+            catch (Exception e) when (e.Message == "The remote server returned an error: (520) Origin Error.")
+            {
+                return "https://github.com/jakedacatman/OscarBot/blob/master/sorry.md";
             }
         }
 

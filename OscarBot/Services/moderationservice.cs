@@ -104,7 +104,7 @@ namespace OscarBot.Services
                 var _db = scope.ServiceProvider.GetRequiredService<EntityContext>();
 
                 var c = _db.ModerationActions;
-                var query = c.Include(x => x).Where(x => x.GuildId == guildId);
+                var query = c.Include(x => x.Actions).Where(x => x.GuildId == guildId);
                 ModerationActionCollection actions;
                 if (!query.Any())
                 {
@@ -125,7 +125,7 @@ namespace OscarBot.Services
                 var _db = scope.ServiceProvider.GetRequiredService<EntityContext>();
 
                 var actions = _db.ModerationActions;
-                var query = actions.Include(x => x).Where(x => x.GuildId == action.GuildId);
+                var query = actions.Include(x => x.Actions).Where(x => x.GuildId == action.GuildId);
                 ModerationActionCollection list;
                 if (!query.Any())
                 {
